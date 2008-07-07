@@ -1,0 +1,1 @@
+[Tag {start = Coord {row = 1, col = 18}, mark = Empty},Tag {start = Coord {row = 2, col = 1}, mark = Mark [] []},Tag {start = Coord {row = 2, col = 1}, mark = Empty},Tag {start = Coord {row = 3, col = 1}, mark = Mark [] []},Tag {start = Coord {row = 3, col = 3}, mark = Empty},Tag {start = Coord {row = 4, col = 1}, mark = Mark [] []}]
