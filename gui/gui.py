@@ -41,6 +41,7 @@ class App(Frame):
 		                 column = 0,
 		                 sticky=N+E+S+W)
 
+# TODO: why is viewer a separate class? This could all be part of App.
 class Viewer(Canvas):
 	def __init__(self, state, master=None):
 		Canvas.__init__(self, master, state = NORMAL, takefocus = 1,
@@ -72,6 +73,8 @@ class Viewer(Canvas):
 #       programs into it instead of a regular Text.
 
 # a ProgramBox holds a computation. it may have a result
+# a ProgramBox is *visual representation on the canvas* of the same thing that
+#  a Program represents in the application's abstract model.
 # a ProgramBox can be a user object for Programs.
 class ProgramBox(object):
 	def __init__(self, state, canvas, x = 0, y = 0):
@@ -89,14 +92,78 @@ class ProgramBox(object):
 	
 	def recompute(self, event):
 		print "Recompute!"
+	
+	# methods for the Program to call:
+	
+	# makeResult: called by the program object when it replaces itself with
+	#             a different, equivalent Program.
+	# TODO: should this be called makeContinuation instead?
+	def makeResult(self, result)
+		# result is a Program object
+		# return a Program just like result, but suitable for execution
+		# (i.e., a Program just like result, but has a user object)
+	
+	# makeSubprogram: called by the program object when it spawns another
+	#                 Program to do some work
+	def makeSubprogram(self, sub)
+		# sub is a Program object or a Value object
+		# return a Program just like sub, but with a user object (so it
+		# can be used in a traced computation, for instance)
 
-def makeProgramFromString(string, state):
-	Make a program object from the string in the given state
+# -------------
+# ProgramBox - Program Interface:
+#   The basic idea is that the Program should have all the knowledge of how it
+# executes, and the ProgramBox should have all the knowledge of how it displays
+# information as a graph. (Note: both of them share the underlying assumption
+# that the program is, in fact, a graph.)
+#
+#   To make things more interesting, the ProgramBoxes need to know about order
+# of evaluation. Specifically, there needs to be a notion of, "Program A caused
+# program B to be executed," so that evaluation will display properly on the
+# graph, and each program's subexpressions will be the things it *evaluated*.
+#
+#   The current attempt to implement this idea is as follows. Think of two
+# separate types of objects, Programs and ProgramKernels. A ProgramKernel is
+# something that can make a Program (a "thunk", even :-) ). Each Program knows
+# its runtime object, which is something it can call to do two things:
+#
+#   - spawn a subprogram (with makeSubprogram)
+#   - result in a value (with makeResult)
+#
+#   makeResult takes either a Value object, if the program results in a value,
+# or a ProgramKernel object, if it results in another program. makeResult
+# returns either the Value object or the Program object created from the
+# ProgramKernel.
+#   makeSubprogram takes a ProgramKernel. it returns a new Program object
+# representing the subcomputation, which
+# makeSubprogram returns a new Program object, which the calling program can
+# use to help it solve the subproblem.
+#
+#   Open question: if a program calls makeSubprogram, and then asks the
+# resulting program to evaluate itself again, and maybe so on a few more times,
+# how does all of this get attributed to the right program? and who knows what
+# a program's parent is, and how do they express that information? and are
+# these the same question? (well, a solution to the second would solve the
+# first one too.)
 
 # Program: dummy class so I can think about things
 class Program(object):
-	def __init__(self, user_object):
-		self.user = user_object
+	def __init__(self, kernel, runtime):
+		self.kernel = kernel
+		self.runtime = runtime
+	
+	# evaluate: run this program.
+	def evaluate(self):
+		...
+	
+	def result(self):
+		# return a program object
+	
+	def children(self):
+		# return a list of program objects
+
+def makeProgramFromString(string, state):
+	Make a program object from the string in the given state
 
 # class State: holds the state of a computer. Provides the environment for
 # executing programs.
