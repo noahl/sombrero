@@ -122,29 +122,29 @@ class ProgramBox(object):
 # program B to be executed," so that evaluation will display properly on the
 # graph, and each program's subexpressions will be the things it *evaluated*.
 #
-#   The current attempt to implement this idea is as follows. Think of two
-# separate types of objects, Programs and ProgramKernels. A ProgramKernel is
-# something that can make a Program (a "thunk", even :-) ). Each Program knows
-# its runtime object, which is something it can call to do two things:
+#   Furthermore, there are only ProgramBoxes for *some* of the possible Program
+# nodes, not all.
 #
-#   - spawn a subprogram (with makeSubprogram)
-#   - result in a value (with makeResult)
+#   The current attempt to implement this idea is as follows. Because there are
+# not ProgramBoxes for all Program nodes, the Programs need to have all of the
+# information about links. Specifically, the Program needs to know what its
+# parent is (and its call site?), what its children are, and what its reult is.
+# Therefore, Programs implement these three methods:
 #
-#   makeResult takes either a Value object, if the program results in a value,
-# or a ProgramKernel object, if it results in another program. makeResult
-# returns either the Value object or the Program object created from the
-# ProgramKernel.
-#   makeSubprogram takes a ProgramKernel. it returns a new Program object
-# representing the subcomputation, which
-# makeSubprogram returns a new Program object, which the calling program can
-# use to help it solve the subproblem.
+#   parent() :: Program - returns the parent of this program, or None
+#   children() :: [Program] - returns the children of this program, as a list
+#   result() :: Program - returns the result of this program, or None
 #
-#   Open question: if a program calls makeSubprogram, and then asks the
-# resulting program to evaluate itself again, and maybe so on a few more times,
-# how does all of this get attributed to the right program? and who knows what
-# a program's parent is, and how do they express that information? and are
-# these the same question? (well, a solution to the second would solve the
-# first one too.)
+#   In addition, the user interface will need enough information to display
+# Programs nicely, so Programs implement this method too:
+#
+#   name() :: String - returns the name of the function this program represents
+#
+#   Finally (initially? :-)),  the user interface will want to be able to make
+# new Programs given only a string and the overall program context, so there
+# will be a function to do this:
+#
+#   makeProgram(expr, state) :: String -> State -> Program
 
 # Program: dummy class so I can think about things
 class Program(object):
@@ -152,15 +152,15 @@ class Program(object):
 		self.kernel = kernel
 		self.runtime = runtime
 	
-	# evaluate: run this program.
-	def evaluate(self):
-		...
-	
-	def result(self):
+	def parent(self):
 		# return a program object
 	
 	def children(self):
 		# return a list of program objects
+	
+	def result(self):
+		# return a program object
+
 
 def makeProgramFromString(string, state):
 	Make a program object from the string in the given state
