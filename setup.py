@@ -21,11 +21,17 @@ debugmodule = Extension("Trace_Debug",
                         sources = ["hat-c.c", "hat-c.i"],
                         swig_opts = ["-importall", "-I/usr/include", "-D__x86_64__"])
 
+artutilsmodule = Extension("Artutils",
+                           sources = ["trace-reading/artutils.c",
+                                      "trace-reading/pathutils.c",
+                                      "trace-reading/artutils.i"],
+                           swig_opts = ["-importall", "-I/usr/include", "-I."])
+
 # (mis?)using setup
 setup (name = "Trace",
        version = "First Build",
        description = "This is a package to write Hat traces with Python",
-       ext_modules = [tracemodule])
+       ext_modules = [tracemodule, artutilsmodule])
 
 # Then build some extra executables that aren't Python extensions
 
