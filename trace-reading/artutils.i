@@ -4,15 +4,30 @@
 
 %module Artutils
 
-%{
+%header %{
 #include "artutils.h"
 %}
 
-%include "artutils.h"
-%include "typemaps.i" /* for INPUT and OUTPUT parameters */
+/* the functions we're ignoring here are both totally wrappable with SWIG.
+ * However, I don't think we'll actually need either of them, and it doesn't
+ * seem worth the effort to learn SWIG pointer handling and make them work. */
+%ignore freadAt;
+%ignore q_fread;
 
-int freadAt(FileOffset fo, void *OUTPUT, int size, int nmemb, FILE *stream);
-int q_fread(void *OUTPUT, int size, int nmemb, FILE *stream);
-void readModuleAt(FileOffset fo, char **OUTPUT, char **OUTPUT, Bool *OUTPUT);
-FileOffset readTraceAt(FileOffset fo, char **OUTPUT, SrcRef **OUTPUT,
-                       int *OUTPUT, int *followHidden, int depth);
+/* the next functions aren't being wrapped either, even though they might be
+ * very useful, because wrapping them takes time, and I'd rather spend my time
+ * on things I *know* will be useful. I'll come back and make these work if I
+ * hit a point in the Python code where I want to use them. */
+%ignore readModuleAt;
+%ignore readTraceAt;
+
+/* finally, these next two functions return chars that should be interpreted as
+ * very small integers. we redeclare them so that SWIG will do this. */
+int q_peek();
+int q_tag();
+
+%ignore q_peek;
+%ignore q_tag;
+
+%include "artutils.h"
+

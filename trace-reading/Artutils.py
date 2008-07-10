@@ -48,6 +48,8 @@ except AttributeError:
 del types
 
 
+q_peek = _Artutils.q_peek
+q_tag = _Artutils.q_tag
 Literal = _Artutils.Literal
 Variable = _Artutils.Variable
 Constructor = _Artutils.Constructor
@@ -135,22 +137,16 @@ Ident_swigregister(Ident)
 finalise = _Artutils.finalise
 openFile = _Artutils.openFile
 sizeFile = _Artutils.sizeFile
-freadAt = _Artutils.freadAt
 readFO = _Artutils.readFO
 readString = _Artutils.readString
-q_fread = _Artutils.q_fread
 q_readFO = _Artutils.q_readFO
 q_readString = _Artutils.q_readString
-q_peek = _Artutils.q_peek
-q_tag = _Artutils.q_tag
 q_init = _Artutils.q_init
-readModuleAt = _Artutils.readModuleAt
 readAtomAt = _Artutils.readAtomAt
 readValueAt = _Artutils.readValueAt
 readSRAt = _Artutils.readSRAt
 q_skipNode = _Artutils.q_skipNode
 currentfilepos = _Artutils.currentfilepos
-readTraceAt = _Artutils.readTraceAt
 infixPrint = _Artutils.infixPrint
 openHatFile = _Artutils.openHatFile
 closeHatFile = _Artutils.closeHatFile
