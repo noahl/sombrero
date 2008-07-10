@@ -111,7 +111,7 @@ class ProgramBox(object):
 		# can be used in a traced computation, for instance)
 
 # -------------
-# ProgramBox - Program Interface:
+# ProgramBox <--> Program Interface:
 #   The basic idea is that the Program should have all the knowledge of how it
 # executes, and the ProgramBox should have all the knowledge of how it displays
 # information as a graph. (Note: both of them share the underlying assumption
@@ -128,8 +128,8 @@ class ProgramBox(object):
 #   The current attempt to implement this idea is as follows. Because there are
 # not ProgramBoxes for all Program nodes, the Programs need to have all of the
 # information about links. Specifically, the Program needs to know what its
-# parent is (and its call site?), what its children are, and what its reult is.
-# Therefore, Programs implement these three methods:
+# parent is (and its call site?), what its children are, and what its result
+# is. Therefore, Programs implement these three methods:
 #
 #   parent() :: Program - returns the parent of this program, or None
 #   children() :: [Program] - returns the children of this program, as a list
@@ -144,29 +144,14 @@ class ProgramBox(object):
 # new Programs given only a string and the overall program context, so there
 # will be a function to do this:
 #
-#   makeProgram(expr, state) :: String -> State -> Program
-
-# Program: dummy class so I can think about things
-class Program(object):
-	def __init__(self, kernel, runtime):
-		self.kernel = kernel
-		self.runtime = runtime
-	
-	def parent(self):
-		# return a program object
-	
-	def children(self):
-		# return a list of program objects
-	
-	def result(self):
-		# return a program object
+#   makeProgram(expr, state) :: String -> State -> Program (makeProgramFromString)
+# -------------
 
 
-def makeProgramFromString(string, state):
-	Make a program object from the string in the given state
 
 # class State: holds the state of a computer. Provides the environment for
 # executing programs.
+# right now, this is a completely unnecessary dummy class
 class State(object):
 	def import_file(self, filename):
 		print "Importing file", repr(filename), "!"
