@@ -52,6 +52,7 @@ class Viewer(Canvas):
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
 	
+	# TODO: factor this and the ProgramBox's right click handler into one function
 	def handle_right_click(self, event):
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
@@ -90,9 +91,37 @@ class ProgramBox(object):
 		
 		self.cmdfield.bind("<KeyPress-Return>", self.recompute, add="+")
 		self.cmdfield.bind("<FocusOut>", self.recompute, add="+")
+		
+		# if we add this handler here, clicks on the border of the text field will call
+		# this *and* the canvas' right-click handler, even if add is "".
+		#self.canvas.tag_bind(self.window, "<Button-3>", self.handle_right_click, add="")
+		
+		# right clicks in the text field get passed to the text field's right-click
+		# callback, not the canvas window's.
+		self.cmdfield.bind("<Button-3>", self.handle_right_click, add="+")
 	
+	# TODO: factor this and the Viewer's right click handler into one function.
+	def handle_right_click(self, event):
+		if hasattr(self, "popup") and self.popup is not None:
+			self.popup.unpost()
+		popup = Menu(self.canvas, tearoff=0)
+		popup.add_command(label = "Show parent", command = self.show_parent)
+		popup.add_command(label = "Show children", command = self.show_children)
+		popup.add_command(label = "Show result", command = self.show_result)
+		self.popup = popup
+		popup.post(event.x_root, event.y_root)
+		
 	def recompute(self, event):
 		print "Recompute!"
+	
+	def show_parent(self):
+		print "Show parent!"
+	
+	def show_children(self):
+		print "Show children!"
+	
+	def show_result(self):
+		print "Show result!"
 
 # -------------
 # ProgramBox <--> Program Interface:
@@ -129,7 +158,7 @@ class ProgramBox(object):
 # will be a function to do this:
 #
 #   makeProgram(expr, state) :: String -> State -> Program (makeProgramFromString)
-# -------------		
+# -------------
 
 app = App()
 app.master.title("Sombrero")

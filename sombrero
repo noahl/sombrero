@@ -1,0 +1,4 @@
+#!/bin/sh
+
+PYTHONPATH=.:./gui:./trace-reading python gui/gui.py
+
