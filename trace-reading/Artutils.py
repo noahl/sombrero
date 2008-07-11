@@ -191,5 +191,6 @@ srLineEnd = _Artutils.srLineEnd
 srColumnEnd = _Artutils.srColumnEnd
 ctrlC = _Artutils.ctrlC
 fileoffset_compare = _Artutils.fileoffset_compare
+findMainUse = _Artutils.findMainUse
 
 

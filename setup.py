@@ -30,6 +30,7 @@ artutilsmodule = Extension("Artutils",
                                             ("VERSION", "\"2.05\"")],
                            sources = ["trace-reading/artutils.c",
                                       "trace-reading/pathutils.c",
+                                      "trace-reading/detectutils.c",
                                       "trace-reading/artutils.i"],
                            swig_opts = ["-importall", "-I/usr/include", "-I."],
                            include_dirs = ["."])

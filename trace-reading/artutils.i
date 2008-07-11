@@ -2,10 +2,15 @@
  * generate a Python interface for the hat-c code. documentation was at
  * http://www.swig.org/doc.html when I looked */
 
+/* THE MODULE ARTUTILS INCLUDES THE DETECTUTILS CODE AS WELL! AAAAHHHH!
+ * DON'T FORGET THIS! */
+
 %module Artutils
 
 %header %{
 #include "artutils.h"
+#include "detectutils.h"
+/* not wrapping pathutils because Python has its own equivalents. */
 %}
 
 /* the functions we're ignoring here are both totally wrappable with SWIG.
@@ -30,4 +35,8 @@ int q_tag();
 %ignore q_tag;
 
 %include "artutils.h"
+
+/* only wrapping one function from detectutils.h. */
+// %include "detectutils.h"
+FileOffset findMainUse(Bool findUse);
 

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from Tkinter import *
+from program import Program, State, makeProgramFromString
 
 # fileDialog: let the user type in a file pathname, and give it to the procedure target
 def fileDialog(target):
@@ -46,7 +47,7 @@ class Viewer(Canvas):
 	def __init__(self, state, master=None):
 		Canvas.__init__(self, master, state = NORMAL, takefocus = 1,
 		                background = "white")
-		self.state = state
+		self.programstate = state
 		# TODO: maybe None is a valid state? for some sort of pure viewer?
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
@@ -56,10 +57,10 @@ class Viewer(Canvas):
 			self.popup.unpost()
 		# TODO: This makes popups on top of *everything*. This is BAD!
 		popup = Menu(self, tearoff=0)
-		popup.add_command(label = "Make new program box",
-		                  command = lambda: ProgramBox(self, state, x = event.x, y = event.y))
+		popup.add_command(label = "Make a new program box",
+		                  command = lambda: ProgramBox(self.programstate, self, x = event.x, y = event.y))
 		popup.add_command(label = "Import a new file",
-		                  command = lambda: fileDialog(lambda f: self.state.import_file(f)))
+		                  command = lambda: fileDialog(lambda f: self.programstate.import_file(f)))
 		self.popup = popup
 		popup.post(event.x_root, event.y_root)
 	
@@ -92,23 +93,6 @@ class ProgramBox(object):
 	
 	def recompute(self, event):
 		print "Recompute!"
-	
-	# methods for the Program to call:
-	
-	# makeResult: called by the program object when it replaces itself with
-	#             a different, equivalent Program.
-	# TODO: should this be called makeContinuation instead?
-	def makeResult(self, result)
-		# result is a Program object
-		# return a Program just like result, but suitable for execution
-		# (i.e., a Program just like result, but has a user object)
-	
-	# makeSubprogram: called by the program object when it spawns another
-	#                 Program to do some work
-	def makeSubprogram(self, sub)
-		# sub is a Program object or a Value object
-		# return a Program just like sub, but with a user object (so it
-		# can be used in a traced computation, for instance)
 
 # -------------
 # ProgramBox <--> Program Interface:
@@ -145,16 +129,7 @@ class ProgramBox(object):
 # will be a function to do this:
 #
 #   makeProgram(expr, state) :: String -> State -> Program (makeProgramFromString)
-# -------------
-
-
-
-# class State: holds the state of a computer. Provides the environment for
-# executing programs.
-# right now, this is a completely unnecessary dummy class
-class State(object):
-	def import_file(self, filename):
-		print "Importing file", repr(filename), "!"
+# -------------		
 
 app = App()
 app.master.title("Sombrero")
