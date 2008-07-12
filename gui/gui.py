@@ -23,6 +23,25 @@ def fileDialog(target):
 	button = Button(dialog, text = "Import", command = accept)
 	button.grid(row=0, column=2, sticky=N+S+E+W)
 
+# popupMenu: display a popup menu at the given coordinates (relative to the
+#            root window) with the given choices. return a menu object which
+#            can be closed with its unpost() method
+# usage: popupMenu(master, x, y, ("name", function), ("name2", function2), ...)
+# TODO: This makes popups on top of *everything*. This is BAD!
+def popupMenu(master, x, y, *items):
+	popup = Menu(master, tearoff = 0)
+	
+	for i in items:
+		(lbl, call) = i
+		popup.add_command(label = lbl, command = call)
+
+	# don't call popup.tk_popup(...) here, because it doesn't work right.
+	#popup.tk_popup(x, y, 0) # 0 means put the top-left corner of the menu
+	                        # at (x, y)
+	popup.post(x, y)
+	
+	return popup
+
 class App(Frame):
 	def __init__(self, master=None):
 		Frame.__init__(self, master, takefocus=0)
@@ -54,21 +73,22 @@ class Viewer(Canvas):
 	
 	# TODO: factor this and the ProgramBox's right click handler into one function
 	def handle_right_click(self, event):
+		def makeNewProgramBox():
+			b = ProgramBox(self.programstate, self, x = event.x, y = event.y)
+			b.draw()
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
-		# TODO: This makes popups on top of *everything*. This is BAD!
-		popup = Menu(self, tearoff=0)
-		popup.add_command(label = "Make a new program box",
-		                  command = lambda: ProgramBox(self.programstate, self, x = event.x, y = event.y))
-		popup.add_command(label = "Import a new file",
-		                  command = lambda: fileDialog(lambda f: self.programstate.import_file(f)))
-		self.popup = popup
-		popup.post(event.x_root, event.y_root)
+			del self.popup # this works without this line
+		
+		self.popup = popupMenu(self, event.x_root, event.y_root,
+		  ("Make a new program box", makeNewProgramBox),
+		  ("Import a new file", lambda: fileDialog(lambda f: self.programstate.import_file(f))))
 	
 	def handle_left_click(self, event):
 		self.focus_set()
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
+			del self.popup # this works without this line.
 
 
 # TODO: make a class ExpandingText, or ResizableText, and let people type their
@@ -79,15 +99,20 @@ class Viewer(Canvas):
 #  a Program represents in the application's abstract model.
 # a ProgramBox can be a user object for Programs.
 class ProgramBox(object):
-	def __init__(self, state, canvas, x = 0, y = 0):
+	def __init__(self, state, canvas, program = None, x = 0, y = 0):
 		self.state = state
 		self.canvas = canvas
+		self.pos = (x, y)
 		self.cmdfield = Text(canvas, background = "white",
 		                     height = 1, # height is measured in lines
 		                     width = 40, # width is measured in characters
 		                     wrap = WORD # move a long word to a new line
 		                    )
-		self.window = canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
+		if program is not None:
+			self.program = program
+			self.cmdfield.insert(0, program.name())
+		
+		#self.window = canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
 		
 		self.cmdfield.bind("<KeyPress-Return>", self.recompute, add="+")
 		self.cmdfield.bind("<FocusOut>", self.recompute, add="+")
@@ -99,26 +124,69 @@ class ProgramBox(object):
 		# right clicks in the text field get passed to the text field's right-click
 		# callback, not the canvas window's.
 		self.cmdfield.bind("<Button-3>", self.handle_right_click, add="+")
+		self.cmdfield.bind("<Button-1>", self.handle_left_click, add="+")
+	
+	def draw(self):
+		(x, y) = self.pos
+		self.window = self.canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
 	
 	# TODO: factor this and the Viewer's right click handler into one function.
 	def handle_right_click(self, event):
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
-		popup = Menu(self.canvas, tearoff=0)
-		popup.add_command(label = "Show parent", command = self.show_parent)
-		popup.add_command(label = "Show children", command = self.show_children)
-		popup.add_command(label = "Show result", command = self.show_result)
-		self.popup = popup
-		popup.post(event.x_root, event.y_root)
+			del self.popup
 		
+		self.popup = popupMenu(self.canvas, event.x_root, event.y_root,
+		  ("Show parent", self.show_parent),
+		  ("Show children", self.show_children),
+		  ("Show result", self.show_result))
+	
+	def handle_left_click(self, event):
+		if hasattr(self, "popup") and self.popup is not None:
+			self.popup.unpost()
+			del self.popup # this works without this line.
+
 	def recompute(self, event):
 		print "Recompute!"
+		self.program()
 	
+	# program: returns self's program, but first makes sure it exists, and
+	#          generates it if necessary
+	def program(self):
+		if not hasattr(self, "program") or self.program is None:
+			self.program = makeProgramFromString(
+			    self.cmdfield.get("1.0", "END"),
+			    self.state)
+		
+		return self.program
+	
+	# in order to make everything work correctly, each ProgramBox needs to
+	# know about its parent, child, and result ProgramBoxes if they are
+	# displayed, so that the entire tree can shift together. however,
+	# finding the boxes we need to move to make space should be done with
+	# the canvas' find_... methods, so that we don't assume that we're the
+	# only tree around.
 	def show_parent(self):
-		print "Show parent!"
+		if hasattr(self, "parent"):
+			return # we're done in this case
+		else:
+			(x, y) = self.pos
+			p = ProgramBox(self.state, self.canvas,
+			               program = self.program.parent(),
+			               x = x, y = y - 25)
+			self.parent = p
+			p.draw()
 	
 	def show_children(self):
-		print "Show children!"
+		if not hasattr(self, "children"):
+			self.children = []
+		
+		# maybe our children list has some, but not all, children
+		for c in self.program.children():
+			if any([b.program is c for b in self.children]):
+				continue
+			else:
+				self.children.append(ProgramBox())
 	
 	def show_result(self):
 		print "Show result!"
