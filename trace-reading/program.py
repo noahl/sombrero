@@ -5,6 +5,7 @@ import Artutils
 # the Program class represents a traced program
 # this implementation returns information from a Hat trace file
 
+# for right now, just return dummy objects to test the UI with.
 class Program(object):
 	def __init__(self, fileoffset):
 		# at least we can do a little type checking
@@ -16,15 +17,15 @@ class Program(object):
 	
 	def parent(self):
 		# return a program object or None
-		return None
+		return Program(3)
 	
 	def children(self):
 		# return a (possibly empty) list of program objects
-		return []
+		return [Program(5), Program(6)]
 	
 	def result(self):
 		# return a program object
-		return None
+		return Program(17)
 	
 	def name(self):
 		# return a string

@@ -1,7 +1,10 @@
 #!/usr/bin/python
 
+# gui.py: contains code for building a user interface in which the program
+#         displays a tree to the user in a big canvas, which the user interacts
+#         with through contextual menus.
+
 from Tkinter import *
-from program import Program, State, makeProgramFromString
 
 # fileDialog: let the user type in a file pathname, and give it to the procedure target
 def fileDialog(target):
@@ -24,27 +27,38 @@ def fileDialog(target):
 	button.grid(row=0, column=2, sticky=N+S+E+W)
 
 # popupMenu: display a popup menu at the given coordinates (relative to the
-#            root window) with the given choices. return a menu object which
-#            can be closed with its unpost() method
-# usage: popupMenu(master, x, y, ("name", function), ("name2", function2), ...)
+#            root window) with the given menu. returns the same menu object,
+#            which can be closed with its unpost() method
+# usage: popupMenu(x, y, menu)
 # TODO: This makes popups on top of *everything*. This is BAD!
-def popupMenu(master, x, y, *items):
-	popup = Menu(master, tearoff = 0)
+def popupMenu(x, y, menu):
+	# don't call popup.tk_popup(...) here, because it doesn't work right.
+	menu.post(x, y)
+	
+	return menu
+
+# makeMenu: take a master and a list of (string, function) pairs, and returns a
+# Menu object with the strings as labels, the functions as matching commands,
+# and no tearoff. The functions should take no arguments.
+# usage: makeMenu(master, ("name", function), ("name2", function2), ...)
+def makeMenu(master, *items):
+	menu = Menu(master, tearoff = 0)
 	
 	for i in items:
 		(lbl, call) = i
 		popup.add_command(label = lbl, command = call)
-
-	# don't call popup.tk_popup(...) here, because it doesn't work right.
-	#popup.tk_popup(x, y, 0) # 0 means put the top-left corner of the menu
-	                        # at (x, y)
-	popup.post(x, y)
 	
-	return popup
+	return menu
 
+
+# TODO: I got the idea for an App class from the NMT Tkinter tutorial, but I
+#       think it might be outdated or just wrong. I should check up on this and
+#       then possibly change it.
 class App(Frame):
-	def __init__(self, master=None):
+	def __init__(self, backend, master=None):
 		Frame.__init__(self, master, takefocus=0)
+		
+		self.backend = backend
 		
 		self.grid(sticky=N+S+E+W)
 		self.columnconfigure(0, weight = 1)
@@ -54,35 +68,33 @@ class App(Frame):
 		top.rowconfigure(0, weight = 1)
 		top.columnconfigure(0, weight = 1)
 		
-		self.state = State()
-		
-		self.canvas = Viewer(self.state, self)
+		self.canvas = Viewer(backend, self)
 		self.canvas.grid(row = 0,
 		                 column = 0,
 		                 sticky=N+E+S+W)
 
 # TODO: why is viewer a separate class? This could all be part of App.
 class Viewer(Canvas):
-	def __init__(self, state, master=None):
+	def __init__(self, backend, master=None):
 		Canvas.__init__(self, master, state = NORMAL, takefocus = 1,
 		                background = "white")
-		self.programstate = state
+		self.backend = backend
 		# TODO: maybe None is a valid state? for some sort of pure viewer?
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
 	
 	# TODO: factor this and the ProgramBox's right click handler into one function
 	def handle_right_click(self, event):
-		def makeNewProgramBox():
-			b = ProgramBox(self.programstate, self, x = event.x, y = event.y)
-			b.draw()
+		# close our existing popup, if we have one
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
 			del self.popup # this works without this line
 		
-		self.popup = popupMenu(self, event.x_root, event.y_root,
-		  ("Make a new program box", makeNewProgramBox),
-		  ("Import a new file", lambda: fileDialog(lambda f: self.programstate.import_file(f))))
+		# then, get the context menu choices from the backend
+		choices = backend.context_choices()
+		if choices is not None and len(choices) > 0:
+			self.popup = makeMenu(self, *choices)
+			popupMenu(event.x_root, event.y_root, self.popup)
 	
 	def handle_left_click(self, event):
 		self.focus_set()
@@ -91,16 +103,13 @@ class Viewer(Canvas):
 			del self.popup # this works without this line.
 
 
-# TODO: make a class ExpandingText, or ResizableText, and let people type their
-#       programs into it instead of a regular Text.
+# TODO: make a class ExpandingText, or ResizableText, and let people type into
+#       it instead of a regular Text.
 
-# a ProgramBox holds a computation. it may have a result
-# a ProgramBox is *visual representation on the canvas* of the same thing that
-#  a Program represents in the application's abstract model.
-# a ProgramBox can be a user object for Programs.
-class ProgramBox(object):
-	def __init__(self, state, canvas, program = None, x = 0, y = 0):
-		self.state = state
+# a Node represents a node drawn in the canvas. There is a bijection between
+# Node objects and squares drawn in the scrollarea.
+class Node(object):
+	def __init__(self, backend, canvas, x = 0, y = 0):
 		self.canvas = canvas
 		self.pos = (x, y)
 		self.cmdfield = Text(canvas, background = "white",
@@ -108,11 +117,8 @@ class ProgramBox(object):
 		                     width = 40, # width is measured in characters
 		                     wrap = WORD # move a long word to a new line
 		                    )
-		if program is not None:
-			self.program = program
-			self.cmdfield.insert(0, program.name())
 		
-		#self.window = canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
+		self.window = canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
 		
 		self.cmdfield.bind("<KeyPress-Return>", self.recompute, add="+")
 		self.cmdfield.bind("<FocusOut>", self.recompute, add="+")
@@ -125,21 +131,17 @@ class ProgramBox(object):
 		# callback, not the canvas window's.
 		self.cmdfield.bind("<Button-3>", self.handle_right_click, add="+")
 		self.cmdfield.bind("<Button-1>", self.handle_left_click, add="+")
-	
-	def draw(self):
-		(x, y) = self.pos
-		self.window = self.canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
-	
+		
 	# TODO: factor this and the Viewer's right click handler into one function.
 	def handle_right_click(self, event):
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
 			del self.popup
 		
-		self.popup = popupMenu(self.canvas, event.x_root, event.y_root,
-		  ("Show parent", self.show_parent),
-		  ("Show children", self.show_children),
-		  ("Show result", self.show_result))
+		choices = self.backend.context_choices()
+		if choices is not None and len(choices) > 0:
+			self.popup = popupMenu(event.x_root, event.y_root,
+			                       makeMenu(self, *choices))
 	
 	def handle_left_click(self, event):
 		if hasattr(self, "popup") and self.popup is not None:
@@ -147,87 +149,37 @@ class ProgramBox(object):
 			del self.popup # this works without this line.
 
 	def recompute(self, event):
-		print "Recompute!"
-		self.program()
+		self.backend.recompute()
 	
-	# program: returns self's program, but first makes sure it exists, and
-	#          generates it if necessary
-	def program(self):
-		if not hasattr(self, "program") or self.program is None:
-			self.program = makeProgramFromString(
-			    self.cmdfield.get("1.0", "END"),
-			    self.state)
+	# there are three types of connected nodes: parents, children, and results.
+	
+	# parents display above the child widget
+	def add_parent(self, backend)
+		(x, y) = self.pos
+		if not hasattr(self, "parent") or self.parent is None:
+			self.parent = Node(backend, self.canvas, x, y - 25)
+	
+	# children display below the parent widget
+	def add_children(self, backends):
+		for b in backends:
+			self.add_child(b)
+	
+	def add_child(self, backend)
+		(x, y) = self.pos
 		
-		return self.program
+		if not hasattr(self, "children") or self.children is None:
+			self.children = [Node(backend, self.canvas, x, y + 25)]
+		else: # XXX: this doesn't actually work. also, we should draw connecting lines.
+			self.children.append(Node(backend, self.canvas, x, y + 25))
 	
-	# in order to make everything work correctly, each ProgramBox needs to
-	# know about its parent, child, and result ProgramBoxes if they are
-	# displayed, so that the entire tree can shift together. however,
-	# finding the boxes we need to move to make space should be done with
-	# the canvas' find_... methods, so that we don't assume that we're the
-	# only tree around.
-	def show_parent(self):
-		if hasattr(self, "parent"):
-			return # we're done in this case
-		else:
-			(x, y) = self.pos
-			p = ProgramBox(self.state, self.canvas,
-			               program = self.program.parent(),
-			               x = x, y = y - 25)
-			self.parent = p
-			p.draw()
-	
-	def show_children(self):
-		if not hasattr(self, "children"):
-			self.children = []
+	# results display to the right of the process node
+	def add_result(self, backend):
+		(x, y) = self.pos
 		
-		# maybe our children list has some, but not all, children
-		for c in self.program.children():
-			if any([b.program is c for b in self.children]):
-				continue
-			else:
-				self.children.append(ProgramBox())
-	
-	def show_result(self):
-		print "Show result!"
+		if not hasattr(self, "result") or self.result is None:
+			self.result = Node(backend, self.canvas, x + 50, y)
 
-# -------------
-# ProgramBox <--> Program Interface:
-#   The basic idea is that the Program should have all the knowledge of how it
-# executes, and the ProgramBox should have all the knowledge of how it displays
-# information as a graph. (Note: both of them share the underlying assumption
-# that the program is, in fact, a graph.)
-#
-#   To make things more interesting, the ProgramBoxes need to know about order
-# of evaluation. Specifically, there needs to be a notion of, "Program A caused
-# program B to be executed," so that evaluation will display properly on the
-# graph, and each program's subexpressions will be the things it *evaluated*.
-#
-#   Furthermore, there are only ProgramBoxes for *some* of the possible Program
-# nodes, not all.
-#
-#   The current attempt to implement this idea is as follows. Because there are
-# not ProgramBoxes for all Program nodes, the Programs need to have all of the
-# information about links. Specifically, the Program needs to know what its
-# parent is (and its call site?), what its children are, and what its result
-# is. Therefore, Programs implement these three methods:
-#
-#   parent() :: Program - returns the parent of this program, or None
-#   children() :: [Program] - returns the children of this program, as a list
-#   result() :: Program - returns the result of this program, or None
-#
-#   In addition, the user interface will need enough information to display
-# Programs nicely, so Programs implement this method too:
-#
-#   name() :: String - returns the name of the function this program represents
-#
-#   Finally (initially? :-)),  the user interface will want to be able to make
-# new Programs given only a string and the overall program context, so there
-# will be a function to do this:
-#
-#   makeProgram(expr, state) :: String -> State -> Program (makeProgramFromString)
-# -------------
-
-app = App()
-app.master.title("Sombrero")
-app.mainloop()
+def gui_go(backend):
+	app = App(backend)
+	app.master.title("Sombrero")
+	return app.mainloop()
