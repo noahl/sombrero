@@ -89,7 +89,12 @@ class Viewer(Canvas):
 		self.bind("<Button-1>", self.handle_left_click, add="+")
 	
 	def addNode(self, backend):
-		n = Node(backend, self, x = 50, y = 50)
+		if hasattr(self, "popup_loc") and self.popup_loc is not None:
+			(x, y) = self.popup_loc
+		else:
+			(x, y) = (50, 50)
+		
+		n = Node(backend, self, x = x, y = y)
 	
 	# TODO: factor this and the ProgramBox's right click handler into one function
 	def handle_right_click(self, event):
@@ -97,11 +102,13 @@ class Viewer(Canvas):
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
 			del self.popup # this works without this line
+			del self.popup_loc
 		
 		# then, get the context menu choices from the backend
 		choices = self.backend.context_choices()
 		if choices is not None and len(choices) > 0:
 			self.popup = makeMenu(self, *choices)
+			self.popup_loc = (event.x, event.y)
 			popupMenu(event.x_root, event.y_root, self.popup)
 	
 	def handle_left_click(self, event):
@@ -114,20 +121,27 @@ class Viewer(Canvas):
 # TODO: make a class ExpandingText, or ResizableText, and let people type into
 #       it instead of a regular Text.
 
+# idea: factor this into a ProgramText class, which interfaces with the
+# ProgramBox and responds to events, and a Node class, which only deals with
+# making windows in the canvas and making new nodes.
+
 # a Node represents a node drawn in the canvas. There is a bijection between
 # Node objects and squares drawn in the scrollarea.
 class Node(object):
 	def __init__(self, backend, canvas, x = 0, y = 0):
 		self.canvas = canvas
-		self.pos = (x, y)
 		self.backend = backend
 		if hasattr(backend, "setgui"):
 			backend.setgui(self)
+		name = self.backend.name()
 		self.cmdfield = Text(canvas, background = "white",
 		                     height = 1, # height is measured in lines
-		                     width = 40, # width is measured in characters
+		                     width = len(name), # width is measured in characters
 		                     wrap = WORD # move a long word to a new line
 		                    )
+		
+		self.cmdfield.insert("1.0", name)
+		self.cmdfield.config(state = DISABLED)
 		
 		self.window = canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
 		
@@ -180,10 +194,10 @@ class Node(object):
 	
 	# parents display above the child widget
 	def add_parent(self, backend):
-		(x, y) = self.pos
-		print "Adding parent around:", self.canvas.bbox(self.window)
+		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
+
 		if not hasattr(self, "parent") or self.parent is None:
-			self.parent = Node(backend, self.canvas, x, y - 25)
+			self.parent = Node(backend, self.canvas, x1, y1 - (y2-y1) - 25)
 	
 	# children display below the parent widget
 	def add_children(self, backends):
@@ -191,21 +205,19 @@ class Node(object):
 			self.add_child(b)
 	
 	def add_child(self, backend):
-		(x, y) = self.pos
+		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
 		
-		print "Adding child around:", self.canvas.bbox(self.window)
 		if not hasattr(self, "children") or self.children is None:
-			self.children = [Node(backend, self.canvas, x, y + 25)]
+			self.children = [Node(backend, self.canvas, x1, y2 + 25)]
 		else: # XXX: this doesn't actually work. also, we should draw connecting lines.
-			self.children.append(Node(backend, self.canvas, x, y + 25))
+			self.children.append(Node(backend, self.canvas, x1, y2 + 25))
 	
 	# results display to the right of the process node
 	def add_result(self, backend):
-		(x, y) = self.pos
+		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
 		
-		print "Adding result around:", self.canvas.bbox(self.window)
 		if not hasattr(self, "result") or self.result is None:
-			self.result = Node(backend, self.canvas, x + 50, y)
+			self.result = Node(backend, self.canvas, x2 + 50, y1)
 
 def gui_go(backend):
 	app = App(backend)

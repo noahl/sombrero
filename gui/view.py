@@ -5,7 +5,7 @@
 #          the generic DAG-display code, and program.py, which actually knows
 #          how to manipulate programs.
 
-from program import Program, State, makeProgramFromString
+from program import Program, State
 import gui
 
 # for the canvas:
@@ -18,19 +18,23 @@ class ViewState(object):
 	
 	def context_choices(self):
 		def makeNewProgramBox():
-			b = ProgramBox(self.programstate, self)
+			b = ProgramBox(self.programstate.default_program(),
+			               self)
 			self.gui.addNode(b)
 
 		return (("Make a new program box", makeNewProgramBox),
-		        ("Import a new file", lambda: gui.fileDialog(lambda f: self.programstate.import_file(f))))
+		        ("Import a new file",
+		          lambda: gui.fileDialog(
+		            lambda f: self.programstate.import_file(f))))
 
 # a ProgramBox holds a computation. it may have a result
-# a ProgramBox is *visual representation on the canvas* of the same thing that
-#  a Program represents in the application's abstract model.
+# a ProgramBox is the visual representation on the canvas of the same thing
+#  that a Program represents in the application's abstract model.
 # a ProgramBox can be a user object for Programs.
 class ProgramBox(object):
-	def __init__(self, programstate, viewstate):
-		self.programstate = programstate
+	# the two main attributes are program and viewstate
+	def __init__(self, program, viewstate):
+		self.program = program
 		self.viewstate = viewstate
 	
 	def setgui(self, gui):
@@ -41,36 +45,43 @@ class ProgramBox(object):
 		        ("Show children", self.show_children),
 		        ("Show result", self.show_result))
 	
+	# name: temporary method to give the gui a representation string until
+	#       we can get a real interface going.
+	def name(self):
+		return self.program.name()
+	
 	def recompute(self):
 		print "Recompute!"
-		self.program()
+		#self.program()
 
 	# program: returns self's program, but first makes sure it exists, and
 	#          generates it if necessary
-	def program(self):
+	# commented out until we generate programs from strings
+	#def program(self):
 		# TODO: save the old text box text, and only regenerate if the
 		#       new text is different than the old.
-		if not hasattr(self, "_program") or self._program is None:
-			self._program = makeProgramFromString(
-			    self.gui.text(),
-			    self.programstate)
+	#	if not hasattr(self, "_program") or self._program is None:
+	#		self._program = makeProgramFromString(
+	#		    self.gui.text(),
+	#		    self.programstate)
 		
-		return self._program
+	#	return self._program
 	
 	def show_parent(self):
 		if hasattr(self, "parent"):
 			return # we're done in this case
 		else:
-			p = ProgramBox(self.program().parent(),
+			p = ProgramBox(self.program.parent(),
 			               self.viewstate)
+			self.parent = p
 			self.gui.add_parent(p)
 	
 	def show_children(self):
-		for c in self.program().children():
+		for c in self.program.children():
 			self.gui.add_child(ProgramBox(c, self.viewstate))
 	
 	def show_result(self):
-		self.gui.add_result(ProgramBox(self.program().result(),
+		self.gui.add_result(ProgramBox(self.program.result(),
 		                               self.viewstate))
 
 if __name__ == '__main__':
