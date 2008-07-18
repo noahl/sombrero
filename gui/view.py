@@ -8,18 +8,18 @@
 from program import Program, State, makeProgramFromString
 import gui
 
-
-
-
 # for the canvas:
 class ViewState(object):
 	def __init__(self):
 		self.programstate = State()
 	
+	def setgui(self, gui):
+		self.gui = gui
+	
 	def context_choices(self):
 		def makeNewProgramBox():
 			b = ProgramBox(self.programstate, self)
-			b.draw()
+			self.gui.addNode(b)
 
 		return (("Make a new program box", makeNewProgramBox),
 		        ("Import a new file", lambda: gui.fileDialog(lambda f: self.programstate.import_file(f))))
@@ -29,9 +29,12 @@ class ViewState(object):
 #  a Program represents in the application's abstract model.
 # a ProgramBox can be a user object for Programs.
 class ProgramBox(object):
-	def __init__(self, viewer, programstate, viewstate):
+	def __init__(self, programstate, viewstate):
 		self.programstate = programstate
 		self.viewstate = viewstate
+	
+	def setgui(self, gui):
+		self.gui = gui
 	
 	def context_choices(self):
 		return (("Show parent", self.show_parent),
@@ -40,6 +43,7 @@ class ProgramBox(object):
 	
 	def recompute(self):
 		print "Recompute!"
+		self.program()
 
 	# program: returns self's program, but first makes sure it exists, and
 	#          generates it if necessary
@@ -48,44 +52,29 @@ class ProgramBox(object):
 		#       new text is different than the old.
 		if not hasattr(self, "_program") or self._program is None:
 			self._program = makeProgramFromString(
-			    self.cmdfield.get("1.0", "END"),
-			    self.state)
+			    self.gui.text(),
+			    self.programstate)
 		
 		return self._program
 	
-	# in order to make everything work correctly, each ProgramBox needs to
-	# know about its parent, child, and result ProgramBoxes if they are
-	# displayed, so that the entire tree can shift together. however,
-	# finding the boxes we need to move to make space should be done with
-	# the canvas' find_... methods, so that we don't assume that we're the
-	# only tree around.
 	def show_parent(self):
 		if hasattr(self, "parent"):
 			return # we're done in this case
 		else:
-			(x, y) = self.pos
-			p = ProgramBox(self.state, self.canvas,
-			               program = self.program().parent(),
-			               x = x, y = y - 25)
-			self.parent = p
-			p.draw()
+			p = ProgramBox(self.program().parent(),
+			               self.viewstate)
+			self.gui.add_parent(p)
 	
 	def show_children(self):
-		if not hasattr(self, "children"):
-			self.children = []
-		
-		# maybe our children list has some, but not all, children
 		for c in self.program().children():
-			if any([b.program is c for b in self.children]):
-				continue
-			else:
-				self.children.append(ProgramBox())
+			self.gui.add_child(ProgramBox(c, self.viewstate))
 	
 	def show_result(self):
-		print "Show result!"
+		self.gui.add_result(ProgramBox(self.program().result(),
+		                               self.viewstate))
 
 if __name__ == '__main__':
-	return gui.gui_go(ViewState())
+	gui.gui_go(ViewState())
 
 # -------------
 # ProgramBox <--> Program Interface:

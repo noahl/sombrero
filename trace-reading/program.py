@@ -29,7 +29,7 @@ class Program(object):
 	
 	def name(self):
 		# return a string
-		return "A Program"
+		return ("Program at fileoffset " + str(self.fo))
 
 
 # makeProgramFromString: make a Program from the given string, with the given

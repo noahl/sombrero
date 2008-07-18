@@ -46,7 +46,7 @@ def makeMenu(master, *items):
 	
 	for i in items:
 		(lbl, call) = i
-		popup.add_command(label = lbl, command = call)
+		menu.add_command(label = lbl, command = call)
 	
 	return menu
 
@@ -54,6 +54,9 @@ def makeMenu(master, *items):
 # TODO: I got the idea for an App class from the NMT Tkinter tutorial, but I
 #       think it might be outdated or just wrong. I should check up on this and
 #       then possibly change it.
+# Note: the App is not a real gui class. It doesn't register itself with its
+# backend, because it doesn't have any clear purpose in the program. It should
+# probably go away.
 class App(Frame):
 	def __init__(self, backend, master=None):
 		Frame.__init__(self, master, takefocus=0)
@@ -79,9 +82,14 @@ class Viewer(Canvas):
 		Canvas.__init__(self, master, state = NORMAL, takefocus = 1,
 		                background = "white")
 		self.backend = backend
+		if hasattr(backend, "setgui"):
+			backend.setgui(self)
 		# TODO: maybe None is a valid state? for some sort of pure viewer?
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
+	
+	def addNode(self, backend):
+		n = Node(backend, self, x = 50, y = 50)
 	
 	# TODO: factor this and the ProgramBox's right click handler into one function
 	def handle_right_click(self, event):
@@ -91,7 +99,7 @@ class Viewer(Canvas):
 			del self.popup # this works without this line
 		
 		# then, get the context menu choices from the backend
-		choices = backend.context_choices()
+		choices = self.backend.context_choices()
 		if choices is not None and len(choices) > 0:
 			self.popup = makeMenu(self, *choices)
 			popupMenu(event.x_root, event.y_root, self.popup)
@@ -112,6 +120,9 @@ class Node(object):
 	def __init__(self, backend, canvas, x = 0, y = 0):
 		self.canvas = canvas
 		self.pos = (x, y)
+		self.backend = backend
+		if hasattr(backend, "setgui"):
+			backend.setgui(self)
 		self.cmdfield = Text(canvas, background = "white",
 		                     height = 1, # height is measured in lines
 		                     width = 40, # width is measured in characters
@@ -141,7 +152,7 @@ class Node(object):
 		choices = self.backend.context_choices()
 		if choices is not None and len(choices) > 0:
 			self.popup = popupMenu(event.x_root, event.y_root,
-			                       makeMenu(self, *choices))
+			                       makeMenu(self.canvas, *choices))
 	
 	def handle_left_click(self, event):
 		if hasattr(self, "popup") and self.popup is not None:
@@ -151,11 +162,26 @@ class Node(object):
 	def recompute(self, event):
 		self.backend.recompute()
 	
+	# text: the accessor function for the backend object
+	def text(self):
+		return self.cmdfield.get("1.0", "end")
+		# "end" works, "END" does not. Is Tkinter documented at all?
+		# Evidence suggests not.
+	
 	# there are three types of connected nodes: parents, children, and results.
 	
+	# in order to make everything work correctly, each Node needs to
+	# know about its parent, child, and result Nodes if they are
+	# displayed, so that the entire tree can shift together. however,
+	# finding the boxes we need to move to make space should be done with
+	# the canvas' find_... methods, so that we don't assume that we're the
+	# only tree around.
+
+	
 	# parents display above the child widget
-	def add_parent(self, backend)
+	def add_parent(self, backend):
 		(x, y) = self.pos
+		print "Adding parent around:", self.canvas.bbox(self.window)
 		if not hasattr(self, "parent") or self.parent is None:
 			self.parent = Node(backend, self.canvas, x, y - 25)
 	
@@ -164,9 +190,10 @@ class Node(object):
 		for b in backends:
 			self.add_child(b)
 	
-	def add_child(self, backend)
+	def add_child(self, backend):
 		(x, y) = self.pos
 		
+		print "Adding child around:", self.canvas.bbox(self.window)
 		if not hasattr(self, "children") or self.children is None:
 			self.children = [Node(backend, self.canvas, x, y + 25)]
 		else: # XXX: this doesn't actually work. also, we should draw connecting lines.
@@ -176,6 +203,7 @@ class Node(object):
 	def add_result(self, backend):
 		(x, y) = self.pos
 		
+		print "Adding result around:", self.canvas.bbox(self.window)
 		if not hasattr(self, "result") or self.result is None:
 			self.result = Node(backend, self.canvas, x + 50, y)
 
@@ -183,3 +211,13 @@ def gui_go(backend):
 	app = App(backend)
 	app.master.title("Sombrero")
 	return app.mainloop()
+
+# GUI <--> Backend Interface
+# Each gui object takes a backend as the first argument of its constructor. The
+# backend object has all the model-specific intelligence for the object.
+#
+# If the backend object has a method setgui, it will be called in the gui
+# object's constructor with the gui object as its only argument.
+#
+# When the gui object needs to offer the user choices, it will call the method
+# context_choices() in the backend, which takes no arguments.
