@@ -35,6 +35,11 @@ def popupMenu(x, y, menu):
 	# don't call popup.tk_popup(...) here, because it doesn't work right.
 	menu.post(x, y)
 	
+	# idea: for real popup menus, post the menu, then set the grab so all
+	# events go to the menu. when the menu gets a click, if the click is
+	# outside the menu's area, it can ungrab events, unpost itself, and
+	# resend the event.
+	
 	return menu
 
 # makeMenu: take a master and a list of (string, function) pairs, and returns a
@@ -60,8 +65,6 @@ def makeMenu(master, *items):
 class App(Frame):
 	def __init__(self, backend, master=None):
 		Frame.__init__(self, master, takefocus=0)
-		
-		self.backend = backend
 		
 		self.grid(sticky=N+S+E+W)
 		self.columnconfigure(0, weight = 1)
@@ -130,33 +133,67 @@ class Viewer(Canvas):
 class Node(object):
 	def __init__(self, backend, canvas, x = 0, y = 0):
 		self.canvas = canvas
-		self.backend = backend
-		if hasattr(backend, "setgui"):
-			backend.setgui(self)
-		name = self.backend.name()
-		self.cmdfield = Text(canvas, background = "white",
-		                     height = 1, # height is measured in lines
-		                     width = len(name), # width is measured in characters
-		                     wrap = WORD # move a long word to a new line
-		                    )
+		self.textfield = ProgramText(backend, canvas, self)
 		
-		self.cmdfield.insert("1.0", name)
-		self.cmdfield.config(state = DISABLED)
-		
-		self.window = canvas.create_window(x, y, window=self.cmdfield, anchor=NW)
-		
-		self.cmdfield.bind("<KeyPress-Return>", self.recompute, add="+")
-		self.cmdfield.bind("<FocusOut>", self.recompute, add="+")
-		
+		self.window = canvas.create_window(x, y, window=self.textfield, anchor=NW)
+				
 		# if we add this handler here, clicks on the border of the text field will call
 		# this *and* the canvas' right-click handler, even if add is "".
 		#self.canvas.tag_bind(self.window, "<Button-3>", self.handle_right_click, add="")
 		
 		# right clicks in the text field get passed to the text field's right-click
-		# callback, not the canvas window's.
-		self.cmdfield.bind("<Button-3>", self.handle_right_click, add="+")
-		self.cmdfield.bind("<Button-1>", self.handle_left_click, add="+")
+		# callback, not the canvas window's, so don't bind them here.
+	
+	
+	# there are three types of connected nodes: parents, children, and results.
+	
+	# in order to make everything work correctly, each Node needs to
+	# know about its parent, child, and result Nodes if they are
+	# displayed, so that the entire tree can shift together. however,
+	# finding the boxes we need to move to make space should be done with
+	# the canvas' find_... methods, so that we don't assume that we're the
+	# only tree around.
+
+	# add_offset_node: add a new node at a given offset from this one.
+	def add_offset_node(self, backend, dx, dy):
+		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
 		
+		if dx > 0: # there's also a special python ifExp form. use it?
+			x = x2 + dx
+		else:
+			x = x1 + dx
+		
+		if dy > 0:
+			y = y2 + dy
+		else:
+			y = y1 + dy
+		
+		Node(backend, self.canvas, x, y)
+
+# ProgramText: a type of Text object to handle the actual display of a program.
+# TODO: this class was broken off of Node, and I am not at all sure that it
+# should have been. Consider this, and figure out if one is right.
+class ProgramText(Text):
+	def __init__(self, backend, canvas, node):
+		self.backend = backend
+		if hasattr(backend, "setgui"):
+			backend.setgui(self)
+		self.node = node
+		self.canvas = canvas
+		text = self.backend.name()
+		Text.__init__(self, canvas, background = "white",
+		              height = 1, # height is measured in lines
+		              width = len(text), # width is measured in characters
+		              wrap = WORD # move a long word to a new line
+		             )
+		self.insert("1.0", text)
+		self.config(state = DISABLED)
+
+		self.bind("<Button-3>", self.handle_right_click, add="+")
+		self.bind("<Button-1>", self.handle_left_click, add="+")
+	
+	# Event handling functions:
+	
 	# TODO: factor this and the Viewer's right click handler into one function.
 	def handle_right_click(self, event):
 		if hasattr(self, "popup") and self.popup is not None:
@@ -172,52 +209,24 @@ class Node(object):
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
 			del self.popup # this works without this line.
-
-	def recompute(self, event):
-		self.backend.recompute()
 	
-	# text: the accessor function for the backend object
+	# Interface functions for the backend:
+	
+	# TODO: take this function out and replace it with a real interface.
 	def text(self):
-		return self.cmdfield.get("1.0", "end")
+		return self.get("1.0", "end")
 		# "end" works, "END" does not. Is Tkinter documented at all?
 		# Evidence suggests not.
 	
-	# there are three types of connected nodes: parents, children, and results.
-	
-	# in order to make everything work correctly, each Node needs to
-	# know about its parent, child, and result Nodes if they are
-	# displayed, so that the entire tree can shift together. however,
-	# finding the boxes we need to move to make space should be done with
-	# the canvas' find_... methods, so that we don't assume that we're the
-	# only tree around.
-
-	
-	# parents display above the child widget
 	def add_parent(self, backend):
-		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
-
-		if not hasattr(self, "parent") or self.parent is None:
-			self.parent = Node(backend, self.canvas, x1, y1 - (y2-y1) - 25)
-	
-	# children display below the parent widget
-	def add_children(self, backends):
-		for b in backends:
-			self.add_child(b)
+		self.node.add_offset_node(backend, 0, -25)
 	
 	def add_child(self, backend):
-		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
-		
-		if not hasattr(self, "children") or self.children is None:
-			self.children = [Node(backend, self.canvas, x1, y2 + 25)]
-		else: # XXX: this doesn't actually work. also, we should draw connecting lines.
-			self.children.append(Node(backend, self.canvas, x1, y2 + 25))
+		self.node.add_offset_node(backend, 0, 25)
 	
-	# results display to the right of the process node
 	def add_result(self, backend):
-		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
-		
-		if not hasattr(self, "result") or self.result is None:
-			self.result = Node(backend, self.canvas, x2 + 50, y1)
+		self.node.add_offset_node(backend, 25, 0)
+
 
 def gui_go(backend):
 	app = App(backend)
