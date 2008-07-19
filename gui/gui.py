@@ -91,13 +91,7 @@ class Viewer(Canvas):
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
 	
-	def addNode(self, backend):
-		if hasattr(self, "popup_loc") and self.popup_loc is not None:
-			(x, y) = self.popup_loc
-		else:
-			(x, y) = (50, 50)
-		
-		n = Node(backend, self, x = x, y = y)
+	# Event handling functions:
 	
 	# TODO: factor this and the ProgramBox's right click handler into one function
 	def handle_right_click(self, event):
@@ -119,23 +113,25 @@ class Viewer(Canvas):
 		if hasattr(self, "popup") and self.popup is not None:
 			self.popup.unpost()
 			del self.popup # this works without this line.
+	
+	# Interface functions for the backend:
+	
+	def addNode(self, backend):
+		if hasattr(self, "popup_loc") and self.popup_loc is not None:
+			(x, y) = self.popup_loc
+		else:
+			(x, y) = (50, 50)
+		
+		Node(backend, self, x = x, y = y)
 
-
-# TODO: make a class ExpandingText, or ResizableText, and let people type into
-#       it instead of a regular Text.
-
-# idea: factor this into a ProgramText class, which interfaces with the
-# ProgramBox and responds to events, and a Node class, which only deals with
-# making windows in the canvas and making new nodes.
-
-# a Node represents a node drawn in the canvas. There is a bijection between
-# Node objects and squares drawn in the scrollarea.
+# a Node object handles the layout in the canvas of some other object, which is
+# drawn in a canvas window.
 class Node(object):
 	def __init__(self, backend, canvas, x = 0, y = 0):
 		self.canvas = canvas
-		self.textfield = ProgramText(backend, canvas, self)
+		self.widget = ProgramText(backend, canvas, self)
 		
-		self.window = canvas.create_window(x, y, window=self.textfield, anchor=NW)
+		self.window = canvas.create_window(x, y, window=self.widget, anchor=NW)
 				
 		# if we add this handler here, clicks on the border of the text field will call
 		# this *and* the canvas' right-click handler, even if add is "".
@@ -171,8 +167,7 @@ class Node(object):
 		Node(backend, self.canvas, x, y)
 
 # ProgramText: a type of Text object to handle the actual display of a program.
-# TODO: this class was broken off of Node, and I am not at all sure that it
-# should have been. Consider this, and figure out if one is right.
+# TODO: let people edit this object, and make it resize nicely when they do.
 class ProgramText(Text):
 	def __init__(self, backend, canvas, node):
 		self.backend = backend
