@@ -5,15 +5,29 @@
 # in the canvas.
 class Layout(object):
 	def __init__(self, anchor, nodes = []):
+		if anchor in nodes:
+			raise Exception("A Layout can't place its own anchor!", anchor, nodes)
+
 		self.anchor = anchor
-		self.nodes = nodes
+		anchor.add_anchored_layout(self)				
+		self.nodes = nodes[:] # copy the node list. default arguments
+		                      # are evaluated once per *definition*
+		                      # (and this covers other cases, too).
 		self.layout = None # cache the layout
 	
 	def addNode(self, node):
 		self.nodes.append(node)
+		
+		if node is self.anchor:
+			raise Exception("A Layout can't place its own anchor!")
+		
 		self.layout = None # invalidate cached layout
+		print "added a node to a layout"
 	
 	def addNodeAfter(self, prev, node):
+		if node is self.anchor:
+			raise Exception("A Layout can't place its own anchor!")
+		
 		try:
 			i = self.nodes.index(prev)
 		except ValueError:
@@ -30,6 +44,7 @@ class Layout(object):
 		else:
 			layout = self.makeRelativeLayout()
 			self.layout = layout
+			print "made new relative layout", layout
 			return layout
 	
 	# makeRelativeLayout: does the work for relativeLayout.
@@ -40,22 +55,25 @@ class Layout(object):
 	
 	# adjust: adjust this layout's nodes in the canvas
 	def adjust(self):
+		print "adjusting layout"
 		(x, y) = self.anchor.coords()
 		layout = self.relativeLayout()
 		
 		for (node, pos) in zip(self.nodes, layout):
 			(rx, ry) = pos
 			(nx, ny) = node.coords()
-			node.moveBy((nx - x) - rx, (ny - y) - ry)
+			print "moving node", node
+			node.moveBy(rx - (nx - x), ry - (ny - y))
 
 class ColumnLayout(Layout):
 	def makeRelativeLayout(self):
 		layout = []
-		x = y = 0
+		x = 0
+		y = self.anchor.height() + 10
 		
 		for n in self.nodes:
 			layout.append((x, y))
-			y += n.widget.winfo_reqheight()
+			y += n.height()
 			y += 10 # some padding
 		
 		return layout
@@ -63,11 +81,12 @@ class ColumnLayout(Layout):
 class RowLayout(Layout):
 	def makeRelativeLayout(self):
 		layout = []
-		x = y = 0
+		x = self.anchor.width() + 10
+		y = 0
 		
 		for n in self.nodes:
 			layout.append((x, y))
-			x += n.widget.winfo_reqwidth()
+			x += n.width()
 			x += 10
 		
 		return layout

@@ -5,6 +5,7 @@
 #         with through contextual menus.
 
 from Tkinter import *
+import layout
 
 # fileDialog: let the user type in a file pathname, and give it to the procedure target
 def fileDialog(target):
@@ -160,13 +161,23 @@ class Node(object):
 		return (x1, y1)
 	
 	def moveBy(self, dx, dy):
+		print "node moving by", dx, dy
 		self.canvas.move(self.window, dx, dy)
 		for d in self.deps:
 			d.adjust()
 	
+	def height(self):
+		return self.widget.winfo_reqheight()
+	
+	def width(self):
+		return self.widget.winfo_reqwidth()
+	
 	# add_anchored_layout: any node can serve as the anchor for a layout.
 	# the anchor is the object whose position determines the position of
 	# everything else in the layout
+	
+	# this method is called by the Layout object in its __init__ method.
+	# you should never have to use this directly.
 	def add_anchored_layout(self, layout):
 		self.deps.append(layout)
 
@@ -191,9 +202,9 @@ class ProgramText(Text):
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
 		
-		# children and result, if not empty, point to two layout objects
-		self.children = None
-		self.result = None
+		# can't name them 'children' and 'result' or Tkinter will get mad.
+		self.childLayout = None
+		self.resultLayout = None
 	
 	# Event handling functions:
 	
@@ -222,23 +233,22 @@ class ProgramText(Text):
 		# Evidence suggests not.
 	
 	def add_parent(self, backend):
-		self.node.add_offset_node(backend, 0, -25)
+		pass
 	
 	def add_child(self, backend):
-		if self.children is not None:
-			self.children = ColumnLayout(self.node)
-			self.node.add_anchored_layout(self.children)
+		if self.childLayout is None:
+			self.childLayout = layout.ColumnLayout(self.node)
 		
-		self.children.addNode(Node(backend, self.canvas))
-		self.children.adjust()
+		self.childLayout.addNode(Node(backend, self.canvas))
+		self.childLayout.adjust()
 	
 	def add_result(self, backend):
-		if self.result is not None:
-			self.result = RowLayout(self.node)
-			self.node.add_anchored_layout(self.result)
+		print "adding result", backend
+		if self.resultLayout is None:
+			self.resultLayout = layout.RowLayout(self.node)
 		
-		self.result.addNode(Node(backend, self.canvas))
-		self.result.adjust()
+		self.resultLayout.addNode(Node(backend, self.canvas))
+		self.resultLayout.adjust()
 
 
 def gui_go(backend):
