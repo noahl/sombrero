@@ -32,11 +32,11 @@ class ViewState(object):
 #  that a Program represents in the application's abstract model.
 # a ProgramBox can be a user object for Programs.
 class ProgramBox(object):
-	# the two main attributes are program and viewstate
 	def __init__(self, program, viewstate):
+		# the two main attributes are program and viewstate
 		self.program = program
 		self.viewstate = viewstate
-	
+		
 	def setgui(self, gui):
 		self.gui = gui
 	

@@ -128,8 +128,10 @@ class Viewer(Canvas):
 # drawn in a canvas window.
 class Node(object):
 	def __init__(self, backend, canvas, x = 0, y = 0):
-		self.canvas = canvas
+		self.canvas = canvas				
 		self.widget = ProgramText(backend, canvas, self)
+		# Node really shouldn't know about ProgramTexts, but it's okay
+		# for now because the damage is localized.
 		
 		self.window = canvas.create_window(x, y, window=self.widget, anchor=NW)
 				
@@ -139,6 +141,8 @@ class Node(object):
 		
 		# right clicks in the text field get passed to the text field's right-click
 		# callback, not the canvas window's, so don't bind them here.
+		
+		self.deps = [] # dependent layouts
 	
 	
 	# there are three types of connected nodes: parents, children, and results.
@@ -149,22 +153,22 @@ class Node(object):
 	# finding the boxes we need to move to make space should be done with
 	# the canvas' find_... methods, so that we don't assume that we're the
 	# only tree around.
-
-	# add_offset_node: add a new node at a given offset from this one.
-	def add_offset_node(self, backend, dx, dy):
+	
+	def coords(self):
 		(x1, y1, x2, y2) = self.canvas.bbox(self.window)
 		
-		if dx > 0: # there's also a special python ifExp form. use it?
-			x = x2 + dx
-		else:
-			x = x1 + dx
-		
-		if dy > 0:
-			y = y2 + dy
-		else:
-			y = y1 + dy
-		
-		Node(backend, self.canvas, x, y)
+		return (x1, y1)
+	
+	def moveBy(self, dx, dy):
+		self.canvas.move(self.window, dx, dy)
+		for d in self.deps:
+			d.adjust()
+	
+	# add_anchored_layout: any node can serve as the anchor for a layout.
+	# the anchor is the object whose position determines the position of
+	# everything else in the layout
+	def add_anchored_layout(self, layout):
+		self.deps.append(layout)
 
 # ProgramText: a type of Text object to handle the actual display of a program.
 # TODO: let people edit this object, and make it resize nicely when they do.
@@ -186,6 +190,10 @@ class ProgramText(Text):
 
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
+		
+		# children and result, if not empty, point to two layout objects
+		self.children = None
+		self.result = None
 	
 	# Event handling functions:
 	
@@ -217,10 +225,20 @@ class ProgramText(Text):
 		self.node.add_offset_node(backend, 0, -25)
 	
 	def add_child(self, backend):
-		self.node.add_offset_node(backend, 0, 25)
+		if self.children is not None:
+			self.children = ColumnLayout(self.node)
+			self.node.add_anchored_layout(self.children)
+		
+		self.children.addNode(Node(backend, self.canvas))
+		self.children.adjust()
 	
 	def add_result(self, backend):
-		self.node.add_offset_node(backend, 25, 0)
+		if self.result is not None:
+			self.result = RowLayout(self.node)
+			self.node.add_anchored_layout(self.result)
+		
+		self.result.addNode(Node(backend, self.canvas))
+		self.result.adjust()
 
 
 def gui_go(backend):
