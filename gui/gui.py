@@ -70,6 +70,8 @@ class App(Frame):
 		self.grid(sticky=N+S+E+W)
 		self.columnconfigure(0, weight = 1)
 		self.rowconfigure(0, weight = 1)
+		self.columnconfigure(1, weight = 0)
+		self.rowconfigure(1, weight = 0)
 		
 		top = self.winfo_toplevel()
 		top.rowconfigure(0, weight = 1)
@@ -79,6 +81,17 @@ class App(Frame):
 		self.canvas.grid(row = 0,
 		                 column = 0,
 		                 sticky=N+E+S+W)
+		
+		self.scrollX = Scrollbar(self, orient = HORIZONTAL,
+		    command = self.canvas.xview)
+		self.scrollX.grid(row = 1, column = 0, sticky = E+W)
+		
+		self.scrollY = Scrollbar(self, orient = VERTICAL,
+		    command = self.canvas.yview)
+		self.scrollY.grid(row = 0, column = 1, sticky = N+S)
+		
+		self.canvas["xscrollcommand"] = self.scrollX.set
+		self.canvas["yscrollcommand"] = self.scrollY.set
 
 # TODO: why is viewer a separate class? This could all be part of App.
 class Viewer(Canvas):
@@ -161,7 +174,7 @@ class Node(object):
 		return (x1, y1)
 	
 	def moveBy(self, dx, dy):
-		print "node moving by", dx, dy
+		#print "node moving by", dx, dy
 		self.canvas.move(self.window, dx, dy)
 		for d in self.deps:
 			d.adjust()
@@ -243,7 +256,7 @@ class ProgramText(Text):
 		self.childLayout.adjust()
 	
 	def add_result(self, backend):
-		print "adding result", backend
+		#print "adding result", backend
 		if self.resultLayout is None:
 			self.resultLayout = layout.RowLayout(self.node)
 		

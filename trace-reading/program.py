@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import Artutils
+import Art
 
 # the Program class represents a traced program
 # this implementation returns information from a Hat trace file
@@ -14,23 +15,53 @@ class Program(object):
 		else:
 			raise Exception("Program created with invalid offset \
 			                 type %s" % str(fileoffset.__class__))
+		
+		self.typ = Artutils.getNodeType(fileoffset)
+		self.arity = Artutils.getExpArity(fileoffset)
+	
+	# arguments: return any arguments of this Program as a possibly-empty
+	#            list.
+	def arguments(self):
+		return [Artutils.peekExpArg(self.fo, n) for n in range(1, self.arity+1)]
 	
 	def parent(self):
 		# return a program object or None
-		return Program(3)
+		if not hasattr(self, "_parent"):
+			p = Artutils.parentNode(self.fo)
+			if not p == 0:
+				self._parent = Program(p)
+				#self._parent.children = [self]
+			else:
+				self._parent = None
+		
+		return self._parent
 	
 	def children(self):
 		# return a (possibly empty) list of program objects
-		return [Program(5), Program(6)]
+		if self.typ == Art.ExpApp:
+			return getArgsMadeBy(self.fo, self.result())
+		elif self.typ == Art.ExpConstUse:
+			return [Program(Artutils.peekExpArg(self.fo, 0))]
+		else:
+			return []
 	
 	def result(self):
-		# return a program object
-		return Program(17)
+		# return a program object or None
+		if not hasattr(self, "_result"):
+			r = Artutils.peekResult(self.fo)
+			if r == 0 or r == self.fo:
+				self._result = None
+			else:
+				self._result = Program(r)
+		
+		return self._result
 	
 	def name(self):
 		# return a string
-		return ("Program at fileoffset " + str(self.fo))
-
+		if not hasattr(self, "_trace"):
+			self._trace = Artutils.traceFromFO(self.fo, 0, 5)
+		
+		return self._trace.expr	
 
 # makeProgramFromString: make a Program from the given string, with the given
 #                        global state

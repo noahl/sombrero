@@ -134,6 +134,30 @@ class Ident(_object):
 Ident_swigregister = _Artutils.Ident_swigregister
 Ident_swigregister(Ident)
 
+class Trace(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, Trace, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, Trace, name)
+    __repr__ = _swig_repr
+    __swig_setmethods__["expr"] = _Artutils.Trace_expr_set
+    __swig_getmethods__["expr"] = _Artutils.Trace_expr_get
+    if _newclass:expr = _swig_property(_Artutils.Trace_expr_get, _Artutils.Trace_expr_set)
+    __swig_setmethods__["sr"] = _Artutils.Trace_sr_set
+    __swig_getmethods__["sr"] = _Artutils.Trace_sr_get
+    if _newclass:sr = _swig_property(_Artutils.Trace_sr_get, _Artutils.Trace_sr_set)
+    __swig_setmethods__["infix"] = _Artutils.Trace_infix_set
+    __swig_getmethods__["infix"] = _Artutils.Trace_infix_get
+    if _newclass:infix = _swig_property(_Artutils.Trace_infix_get, _Artutils.Trace_infix_set)
+    def __init__(self, *args): 
+        this = _Artutils.new_Trace(*args)
+        try: self.this.append(this)
+        except: self.this = this
+    __swig_destroy__ = _Artutils.delete_Trace
+    __del__ = lambda self : None;
+Trace_swigregister = _Artutils.Trace_swigregister
+Trace_swigregister(Trace)
+
 finalise = _Artutils.finalise
 openFile = _Artutils.openFile
 sizeFile = _Artutils.sizeFile
@@ -147,6 +171,7 @@ readValueAt = _Artutils.readValueAt
 readSRAt = _Artutils.readSRAt
 q_skipNode = _Artutils.q_skipNode
 currentfilepos = _Artutils.currentfilepos
+traceFromFO = _Artutils.traceFromFO
 infixPrint = _Artutils.infixPrint
 openHatFile = _Artutils.openHatFile
 closeHatFile = _Artutils.closeHatFile

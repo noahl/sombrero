@@ -625,7 +625,7 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
   *infix = (int)noFixity;	/* default */
 
   if (depth <= 0) {
-    *expr = strdup("[7m [0m");
+    *expr = strdup("[7m [0m"); /* XXX: is this file corruption? */
     return fo;
   }
 
@@ -759,6 +759,7 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
 	  sprintf(buf,"%s",id->idname);
 	  *expr = strdup(buf);
           *sr   = readSRAt(foSR);
+          /* XXX: shouldn't id be freed? Is this a memory leak? */
 	  return parent;
 	} break;
       case ExpGuard:
@@ -840,6 +841,17 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
   }
 }
 
+/* added by Noah: traceFromFO returns a trace object from a fileoffset. It's a
+ * simple wrapper for readTraceAt, just to make SWIG wrapping easier. */
+Trace *
+traceFromFO(FileOffset fo, int followHidden, int depth)
+{
+	Trace *tr = malloc(sizeof(Trace));
+	
+	readTraceAt(fo, &(tr->expr), &(tr->sr), &(tr->infix), followHidden, depth);
+	
+	return tr;
+}
 
 /* print an infix expression correctly according to the given priorities. */
 char*

@@ -39,6 +39,14 @@ typedef struct {
   AtomType  atomtype;
 } Ident;
 
+/* added by Noah: a structure to hold the representation of a trace. makes SWIG
+ * wrapping more convenient. */
+typedef struct {
+  char *expr;
+  SrcRef *sr;
+  int infix;
+} Trace;
+
 void		finalise	(void);
 FILE*		openFile	(char* base, char* ext);
 int		sizeFile	(char* base, char* ext);
@@ -62,6 +70,7 @@ FileOffset	currentfilepos	(void);
 
 FileOffset	readTraceAt	(FileOffset fo, char** expr, SrcRef** sr
 				,int* infix,int followHidden,int depth);
+Trace*		traceFromFO     (FileOffset fo, int followHidden, int depth);
 char*		infixPrint	( char* str1, int arg1
 				, char* strfn, int fn
 				, char* str2, int arg2);

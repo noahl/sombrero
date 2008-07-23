@@ -40,3 +40,9 @@ int q_tag();
 // %include "detectutils.h"
 FileOffset findMainUse(Bool findUse);
 
+/* TODO: wrap the Ident struct and the ident*(Ident *) functions as an Ident
+ *       object */
+
+/* get the node types */
+/* TODO: for some reason, this doesn't work. */
+%include "art.h"

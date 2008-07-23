@@ -35,11 +35,16 @@ artutilsmodule = Extension("Artutils",
                            swig_opts = ["-importall", "-I/usr/include", "-I."],
                            include_dirs = ["."])
 
+artmodule = Extension("Art",
+                      sources = ["trace-reading/art.i"],
+                      swig_opts = ["-importall", "-I/usr/include", "-I."],
+                      include_dirs = ["."])
+
 # (mis?)using setup
 setup (name = "Trace",
        version = "First Build",
        description = "This is a package to write Hat traces with Python",
-       ext_modules = [tracemodule, artutilsmodule])
+       ext_modules = [tracemodule, artutilsmodule, artmodule])
 
 # Then build some extra executables that aren't Python extensions
 

@@ -81,8 +81,10 @@ class ProgramBox(object):
 			self.gui.add_child(ProgramBox(c, self.viewstate))
 	
 	def show_result(self):
-		self.gui.add_result(ProgramBox(self.program.result(),
-		                               self.viewstate))
+		r = self.program.result()
+		
+		if r is not None:
+			self.gui.add_result(ProgramBox(r, self.viewstate))
 
 if __name__ == '__main__':
 	gui.gui_go(ViewState())

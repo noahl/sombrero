@@ -22,7 +22,7 @@ class Layout(object):
 			raise Exception("A Layout can't place its own anchor!")
 		
 		self.layout = None # invalidate cached layout
-		print "added a node to a layout"
+		#print "added a node to a layout"
 	
 	def addNodeAfter(self, prev, node):
 		if node is self.anchor:
@@ -44,7 +44,7 @@ class Layout(object):
 		else:
 			layout = self.makeRelativeLayout()
 			self.layout = layout
-			print "made new relative layout", layout
+			#print "made new relative layout", layout
 			return layout
 	
 	# makeRelativeLayout: does the work for relativeLayout.
@@ -55,14 +55,14 @@ class Layout(object):
 	
 	# adjust: adjust this layout's nodes in the canvas
 	def adjust(self):
-		print "adjusting layout"
+		#print "adjusting layout"
 		(x, y) = self.anchor.coords()
 		layout = self.relativeLayout()
 		
 		for (node, pos) in zip(self.nodes, layout):
 			(rx, ry) = pos
 			(nx, ny) = node.coords()
-			print "moving node", node
+			#print "moving node", node
 			node.moveBy(rx - (nx - x), ry - (ny - y))
 
 class ColumnLayout(Layout):
