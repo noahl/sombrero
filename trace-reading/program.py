@@ -56,7 +56,7 @@ class Program(object):
 		#else:
 		#	return []
 		(e, d) = subNodes(self)
-		return e + d
+		return e
 	
 	def result(self):
 		# return a program object or None
@@ -78,6 +78,8 @@ class Program(object):
 					self._data.expr = self._data.expr + " (use)"
 				elif self.typ == Art.ExpConstDef:
 					self._data.expr = self._data.expr + " (def)"
+				elif self.typ == Art.ExpValueUse:
+					self._data.expr = self._data.expr + " (use)"
 			elif isAtom(self.typ):
 				self._data = Artutils.readAtomAt(self.fo)
 				if self.typ == Art.AtomVariable:
@@ -119,12 +121,16 @@ def subNodes(node):
 			return ([], [])
 		elif source.typ == Art.ExpConstUse:
 			print source, "is a constuse!"
-			return ([source], [source.result()]) # result gives the def
+			return ([], [source.result()]) # result gives the def
+		elif source.typ == Art.ExpValueUse:
+			print source, "is a valueuse!"
+			return ([], [Artutils.peekExpArg(source.fo, 0)])
 		else:
-			exps = []
+			exps = [] # don't count source here - this gets an extra node
 			defs = []
 			for s in source.subexps():
 				e, d = subNodesFrom(s)
+				exps.append(s) # instead, catch nodes here
 				exps.extend(e)
 				defs.extend(d)
 			print "subnodes of", source, ":", (exps, defs)
