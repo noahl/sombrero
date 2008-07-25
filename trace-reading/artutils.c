@@ -387,8 +387,19 @@ Ident*
 readValueAt (FileOffset fo)
 {
   char c, buf[MAX_STRING];  
-  Ident *id = (Ident*)malloc(sizeof(Ident));
+  Ident *id;
   FileOffset parent, usepos = 0;
+
+  HIDE(fprintf(stderr,"readValueAt 0x%x\n",fo);)
+  freadAt(fo,&c,sizeof(char),1,HatFileRandom);
+  if ((lower5(c)<ExpChar) || (lower5(c)>ExpConstDef)) {
+    fprintf(stderr,"%s: expected a value Exp descriptor at position 0x%x\n"
+                  ,progname,fo);
+    exit(1);
+  }
+  HIDE(fprintf(stderr,"readValueAt 0x%x -> tag 0x%x\n",fo,c);)
+
+  id = (Ident*)malloc(sizeof(Ident));
 
   /* defaults */
   id->idname   = (char*)0;
@@ -403,14 +414,6 @@ readValueAt (FileOffset fo)
   id->isTraced   = False;
   id->atomtype   = Literal;
 
-  HIDE(fprintf(stderr,"readValueAt 0x%x\n",fo);)
-  freadAt(fo,&c,sizeof(char),1,HatFileRandom);
-  if ((lower5(c)<ExpChar) || (lower5(c)>ExpConstDef)) {
-    fprintf(stderr,"%s: expected a value Exp descriptor at position 0x%x\n"
-                  ,progname,fo);
-    exit(1);
-  }
-  HIDE(fprintf(stderr,"readValueAt 0x%x -> tag 0x%x\n",fo,c);)
   if (hasSrcPos(c)) { usepos = readFO(); }
   parent = readFO();
   switch (lower5(c)) {
@@ -429,9 +432,9 @@ readValueAt (FileOffset fo)
     case ExpInt:
 		{ int i;
 		  fread(&i,sizeof(int),1,HatFileRandom);
-		  sprintf(buf,"%d",ntohl(i));
-		  id->idname = strdup(buf);
-		} break;
+		  sprintf(buf,"%d",ntohl(i)); /* asprintf is actually the */
+		  id->idname = strdup(buf);   /* right thing here, but it */
+		} break;                      /* might be GNU-only. */
     case ExpInteger:
 		{ id->idname = readString();
 		} break;
@@ -612,8 +615,7 @@ q_skipNode (char tag)
 
 /* readTraceAt() fills in a string containing a readable notation of the
  * Trace stored at the given location in the file.  It returns the
- * parent trace.  This routine is only currently used by the "virtual
- * stack trace" program.
+ * parent trace.
  */
 FileOffset
 readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
@@ -625,8 +627,8 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
   *infix = (int)noFixity;	/* default */
 
   if (depth <= 0) {
-    *expr = strdup("[7m [0m"); /* XXX: is this file corruption? */
-    return fo;
+    *expr = strdup("..."); /* XXX: changed from original because of apparent */
+    return fo;		   /*      file corruption */
   }
 
   if (fo<=DoLambda) {
@@ -653,6 +655,7 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
     HIDE(fprintf(stderr,"readTraceAt 0x%x -> tag 0x%x\n",fo,c);)
     switch (lower5(c)) {
       case ExpApp:
+      case ExpValueApp:
 	{ unsigned char i, arity;
 	  FileOffset foExprs[20], foSR=0;
 	  char* exprs[20];
@@ -660,13 +663,27 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
           if (hasSrcPos(c)) { foSR = readFO(); }
           parent = readFO();			/* get parent */
           HIDE(fprintf(stderr,"enter parent of 0x%x -> 0x%x\n",fo,parent);)
-          readFO();				/* skip result */
+          if (c == ExpApp)
+          	readFO();			/* skip result */
 	  foExprs[0] = readFO();		/* get fun */
 	  fread(&arity,sizeof(unsigned char),1,HatFileRandom);
 	  for (i=1; i<=arity; i++) {
 	    foExprs[i] = readFO();
           }
-	  for (i=0; i<=arity; i++) {
+          if (c == ExpApp) {			/* exp 0 is special */
+          	(void)readTraceAt(getResult(foExprs[0],True)
+          	                 ,&(exprs[0]),sr,&(fixexp[0]),False,depth-1);
+          } else {
+          	Ident* id = readAtomAt(foExprs[0]);
+          	exprs[0] = id->idname;
+          	fixexp[0] = id->fixity;
+          	if (id->modname != NULL)	/* tidy up */
+          		free(id->modname);
+          	if (id->srcname != NULL)	/* might not need to check */
+          		free(id->srcname);	/* for NULL if free does too */
+          	free(id);
+          }
+	  for (i=1; i<=arity; i++) {
 	    (void)readTraceAt(getResult(foExprs[i],True)
                              ,&(exprs[i]),sr,&(fixexp[i]),False,depth-1);
           }
@@ -680,50 +697,6 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
             }
 	  } else {	/* no fixity */
 	    sprintf(buf,"(%s",exprs[0]);
-	    for (i=1; i<=arity; i++) {
-	      strcat(buf," ");
-	      if (isInfix(fixexp[i])) {
-	        strcat(buf,"(");
-	        strcat(buf,exprs[i]);
-	        strcat(buf,")");
-	      } else
-	        strcat(buf,exprs[i]);
-            }
-	    strcat(buf,")");
-	  }
-	  *expr = strdup(buf);
-          *sr   = readSRAt(foSR);
-          HIDE(fprintf(stderr,"return parent of 0x%x -> 0x%x\n",fo,parent);)
-	  return parent;
-	} break;
-      case ExpValueApp:
-	{ unsigned char i, arity; Ident* id;
-	  FileOffset foExprs[20], foSR=0;
-	  char* exprs[20];
-	  int  fixexp[20];
-          if (hasSrcPos(c)) { foSR = readFO(); }
-          parent = readFO();			/* get parent */
-          HIDE(fprintf(stderr,"enter parent of 0x%x -> 0x%x\n",fo,parent);)
-	  foExprs[0] = readFO();		/* get fun */
-	  fread(&arity,sizeof(unsigned char),1,HatFileRandom);
-	  for (i=1; i<=arity; i++) {
-	    foExprs[i] = readFO();
-          }
-          id = readAtomAt(foExprs[0]);
-	  for (i=1; i<=arity; i++) {
-	    (void)readTraceAt(getResult(foExprs[i],True)
-                             ,&(exprs[i]),sr,&(fixexp[i]),False,depth-1);
-          }
-	  *infix = id->fixity;
-	  if (isInfix(id->fixity) && c >= 2) {
-	    sprintf(buf,"%s",infixPrint(exprs[1],fixexp[1],id->idname,id->fixity
-			    ,exprs[2],fixexp[2]));
-	    for (i=3; i<=arity; i++) {
-	      strcat(buf," ");
-	      strcat(buf,exprs[i]);
-            }
-	  } else {	/* no fixity */
-	    sprintf(buf,"(%s",id->idname);
 	    for (i=1; i<=arity; i++) {
 	      strcat(buf," ");
 	      if (isInfix(fixexp[i])) {
@@ -756,10 +729,13 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
 	  parent = readFO();
 	  id	 = readValueAt(fo);
 	  *infix = id->fixity;
-	  sprintf(buf,"%s",id->idname);
-	  *expr = strdup(buf);
+	  *expr = id->idname;
           *sr   = readSRAt(foSR);
-          /* XXX: shouldn't id be freed? Is this a memory leak? */
+          if (id->modname != NULL)
+          	free(id->modname);
+          if (id->srcname != NULL)
+          	free(id->srcname);
+          free(id);
 	  return parent;
 	} break;
       case ExpGuard:
