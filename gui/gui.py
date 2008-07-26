@@ -141,16 +141,16 @@ class Viewer(Canvas):
 		else:
 			(x, y) = (50, 50)
 		
-		Node(backend, self, x = x, y = y)
+		Node(ProgramText(backend, self), self, x = x, y = y)
 
 # a Node object handles the layout in the canvas of some other object, which is
 # drawn in a canvas window.
 class Node(object):
-	def __init__(self, backend, canvas, x = 0, y = 0):
+	def __init__(self, widget, canvas, x = 0, y = 0):
 		self.canvas = canvas				
-		self.widget = ProgramText(backend, canvas, self)
-		# Node really shouldn't know about ProgramTexts, but it's okay
-		# for now because the damage is localized.
+		self.widget = widget
+		if hasattr(widget, "setnode"):
+			widget.setnode(self)
 		
 		self.window = canvas.create_window(x, y, window=self.widget, anchor=NW)
 				
@@ -221,11 +221,10 @@ class Node(object):
 # ProgramText: a type of Text object to handle the actual display of a program.
 # TODO: let people edit this object, and make it resize nicely when they do.
 class ProgramText(Text):
-	def __init__(self, backend, canvas, node):
+	def __init__(self, backend, canvas):
 		self.backend = backend
 		if hasattr(backend, "setgui"):
 			backend.setgui(self)
-		self.node = node
 		self.canvas = canvas
 		text = self.backend.name()
 		Text.__init__(self, canvas, background = "white",
@@ -242,6 +241,9 @@ class ProgramText(Text):
 		# can't name them 'children' and 'result' or Tkinter will get mad.
 		self.childLayout = None
 		self.resultLayout = None
+	
+	def setnode(self, node):
+		self.node = node
 	
 	# Event handling functions:
 	
@@ -276,7 +278,8 @@ class ProgramText(Text):
 		if self.childLayout is None:
 			self.childLayout = layout.ColumnLayout(self.node, self.canvas)
 		
-		self.childLayout.addNode(Node(backend, self.canvas))
+		self.childLayout.addNode(Node(ProgramText(backend, self.canvas),
+		                              self.canvas))
 		self.childLayout.adjust()
 	
 	def add_result(self, backend):
@@ -284,7 +287,8 @@ class ProgramText(Text):
 		if self.resultLayout is None:
 			self.resultLayout = layout.RowLayout(self.node, self.canvas)
 		
-		self.resultLayout.addNode(Node(backend, self.canvas))
+		self.resultLayout.addNode(Node(ProgramText(backend, self.canvas),
+		                               self.canvas))
 		self.resultLayout.adjust()
 	
 	def delete(self):
