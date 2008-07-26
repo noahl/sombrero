@@ -51,8 +51,13 @@ def makeMenu(master, *items):
 	menu = Menu(master, tearoff = 0)
 	
 	for i in items:
-		(lbl, call) = i
-		menu.add_command(label = lbl, command = call)
+		if len(i) == 2:
+			(lbl, call) = i
+			menu.add_command(label = lbl, command = call)
+		elif len(i) == 0:
+			menu.add_separator()
+		else:
+			raise Exception("makeMenu can't understand menu item '" + i + "'")
 	
 	return menu
 
@@ -158,6 +163,10 @@ class Node(object):
 		
 		self.deps = [] # dependent layouts
 	
+	# for the layout that's placing this node:
+	def setLayout(self, layout):
+		self.layout = layout
+	
 	
 	# there are three types of connected nodes: parents, children, and results.
 	
@@ -185,6 +194,9 @@ class Node(object):
 	def width(self):
 		return self.widget.winfo_reqwidth()
 	
+	def bbox(self):
+		return self.canvas.bbox(self.window)
+	
 	# add_anchored_layout: any node can serve as the anchor for a layout.
 	# the anchor is the object whose position determines the position of
 	# everything else in the layout
@@ -193,6 +205,18 @@ class Node(object):
 	# you should never have to use this directly.
 	def add_anchored_layout(self, layout):
 		self.deps.append(layout)
+	
+	def delete(self):
+		self.canvas.delete(self.window)
+		if hasattr(self, "layout") and self.layout is not None:
+			self.layout.absorb(self)
+			self.layout.adjust()
+		del self.widget
+		del self.deps
+	
+	def __str__(self):
+		return self.widget.backend.__str__()
+	__repr__ = __str__
 
 # ProgramText: a type of Text object to handle the actual display of a program.
 # TODO: let people edit this object, and make it resize nicely when they do.
@@ -250,7 +274,7 @@ class ProgramText(Text):
 	
 	def add_child(self, backend):
 		if self.childLayout is None:
-			self.childLayout = layout.ColumnLayout(self.node)
+			self.childLayout = layout.ColumnLayout(self.node, self.canvas)
 		
 		self.childLayout.addNode(Node(backend, self.canvas))
 		self.childLayout.adjust()
@@ -258,11 +282,20 @@ class ProgramText(Text):
 	def add_result(self, backend):
 		#print "adding result", backend
 		if self.resultLayout is None:
-			self.resultLayout = layout.RowLayout(self.node)
+			self.resultLayout = layout.RowLayout(self.node, self.canvas)
 		
 		self.resultLayout.addNode(Node(backend, self.canvas))
 		self.resultLayout.adjust()
-
+	
+	def delete(self):
+		self.node.delete() # also removes us from the layout
+		del self.node
+		del self.childLayout
+		del self.resultLayout
+		self.destroy()
+	
+	# can't override either __str__ or __repr__ (or both?) for a tkinter
+	# object
 
 def gui_go(backend):
 	app = App(backend)

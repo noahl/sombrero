@@ -31,7 +31,7 @@ class Program(object):
 	
 	def subexps(self):
 		se = [Program(Artutils.peekExpArg(self.fo, n)) for n in range(0, self.arity+1)]
-		print "the subexps of", self.name(), "are", se
+		#print "the subexps of", self.name(), "are", se
 		return se
 	
 	def parent(self):
@@ -113,17 +113,17 @@ def argsMadeBy(author, exp):
 #   - definitions accessed by this one
 def subNodes(node):
 	# based on traverseReduct in <hat-src>/hattools/HatExplore.hs
-	print "finding subNodes of", node
+	#print "finding subNodes of", node
 	def subNodesFrom(source):
-		print "finding subnodes from", source
+		#print "finding subnodes from", source
 		if source.parent() != node:
-			print "no subnodes from", source, "!"
+			#print "no subnodes from", source, "!"
 			return ([], [])
 		elif source.typ == Art.ExpConstUse:
-			print source, "is a constuse!"
+			#print source, "is a constuse!"
 			return ([], [source.result()]) # result gives the def
 		elif source.typ == Art.ExpValueUse:
-			print source, "is a valueuse!"
+			#print source, "is a valueuse!"
 			return ([], [Artutils.peekExpArg(source.fo, 0)])
 		else:
 			exps = [] # don't count source here - this gets an extra node
@@ -133,7 +133,7 @@ def subNodes(node):
 				exps.append(s) # instead, catch nodes here
 				exps.extend(e)
 				defs.extend(d)
-			print "subnodes of", source, ":", (exps, defs)
+			#print "subnodes of", source, ":", (exps, defs)
 			return (exps, defs)
 	
 	r = node.result()
@@ -141,7 +141,7 @@ def subNodes(node):
 		s = subNodesFrom(r)
 	else:
 		s = ([], [])
-	print "subNodes of", node, "are", s
+	#print "subNodes of", node, "are", s
 	return s
 
 # is*: these tag test functions should really be in the Art module (in C).
@@ -171,7 +171,7 @@ def isValueExp(tag):
 # right now, this is a completely unnecessary dummy class
 class State(object):
 	def import_file(self, filename):
-		print "Importing file", repr(filename), "!"
+		#print "Importing file", repr(filename), "!"
 		f = open(filename)
 		Artutils.openHatFile("Test", filename)
 		self.hatfile = filename

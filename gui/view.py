@@ -43,7 +43,9 @@ class ProgramBox(object):
 	def context_choices(self):
 		return (("Show parent", self.show_parent),
 		        ("Show children", self.show_children),
-		        ("Show result", self.show_result))
+		        ("Show result", self.show_result),
+		        (),
+		        ("Hide this", self.hide))
 	
 	# name: temporary method to give the gui a representation string until
 	#       we can get a real interface going.
@@ -85,6 +87,13 @@ class ProgramBox(object):
 		
 		if r is not None:
 			self.gui.add_result(ProgramBox(r, self.viewstate))
+	
+	def hide(self):
+		self.gui.delete()
+	
+	def __str__(self):
+		return self.program.__str__()
+	__repr__ = __str__
 
 if __name__ == '__main__':
 	gui.gui_go(ViewState())
