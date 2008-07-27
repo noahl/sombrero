@@ -10,8 +10,9 @@ import gui
 
 # for the canvas:
 class ViewState(object):
-	def __init__(self):
-		self.programstate = State()
+	def __init__(self, programstate, filestate):
+		self.programstate = programstate
+		self.filestate = filestate
 	
 	def setgui(self, gui):
 		self.gui = gui
@@ -27,7 +28,7 @@ class ViewState(object):
 		          lambda: gui.fileDialog(
 		            lambda f: self.programstate.import_file(f))))
 
-# a ProgramBox holds a computation. it may have a result
+# a ProgramBox holds a computation. it may have a result.
 # a ProgramBox is the visual representation on the canvas of the same thing
 #  that a Program represents in the application's abstract model.
 # a ProgramBox can be a user object for Programs.
@@ -96,6 +97,9 @@ class ProgramBox(object):
 	__repr__ = __str__
 
 class FileState(object):
+	def __init__(self, programstate):
+		self.programstate = programstate
+	
 	def default_text(self):
 		return "Choose a file"
 	
@@ -112,7 +116,10 @@ class FileState(object):
 		print "GO GO GO GO GO!"
 
 if __name__ == '__main__':
-	gui.gui_go(ViewState(), FileState())
+	ps = State()
+	fs = FileState(ps)
+	vs = ViewState(ps, fs)
+	gui.gui_go(vs, fs)
 
 # -------------
 # ProgramBox <--> Program Interface:
