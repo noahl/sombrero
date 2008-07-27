@@ -95,8 +95,24 @@ class ProgramBox(object):
 		return self.program.__str__()
 	__repr__ = __str__
 
+class FileState(object):
+	def default_text(self):
+		return "Choose a file"
+	
+	def context_choices(self):
+		return (("Choose a file", self.choosefile),)
+	
+	def choosefile(self):
+		print "Choosing a file!"
+	
+	def import_file(self):
+		print "Importing a file!"
+	
+	def go(self):
+		print "GO GO GO GO GO!"
+
 if __name__ == '__main__':
-	gui.gui_go(ViewState())
+	gui.gui_go(ViewState(), FileState())
 
 # -------------
 # ProgramBox <--> Program Interface:

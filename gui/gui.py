@@ -61,6 +61,22 @@ def makeMenu(master, *items):
 	
 	return menu
 
+# PopupMenu: has a button which pops up a menu of choices. the text of the
+# button is whatever choice is selected.
+# this class acts kind of like a Tkinter widget, but really isn't.
+class PopupMenu(object):
+	def __init__(self, backend, master = None):
+		self.backend = backend
+		self.button = Button(master, text = backend.default_text(),
+		                     command = self.popup)
+	def popup(self):
+		choices = self.backend.context_choices()
+		menu = makeMenu(self.button, *choices)
+		self.popup = popupMenu(self.button.winfo_rootx(),
+		                       self.button.winfo_rooty(),
+		                       menu)
+	def grid(self, *args, **kwargs):
+		self.button.grid(*args, **kwargs)
 
 # TODO: I got the idea for an App class from the NMT Tkinter tutorial, but I
 #       think it might be outdated or just wrong. I should check up on this and
@@ -69,14 +85,15 @@ def makeMenu(master, *items):
 # backend, because it doesn't have any clear purpose in the program. It should
 # probably go away.
 class App(Frame):
-	def __init__(self, backend, master=None):
-		Frame.__init__(self, master, takefocus=0)
+	def __init__(self, backend, filebackend, master=None):
+		Frame.__init__(self, master)
 		
 		self.grid(sticky=N+S+E+W)
 		self.columnconfigure(0, weight = 1)
 		self.rowconfigure(0, weight = 1)
 		self.columnconfigure(1, weight = 0)
 		self.rowconfigure(1, weight = 0)
+		self.columnconfigure(2, weight = 0)
 		
 		top = self.winfo_toplevel()
 		top.rowconfigure(0, weight = 1)
@@ -97,6 +114,28 @@ class App(Frame):
 		
 		self.canvas["xscrollcommand"] = self.scrollX.set
 		self.canvas["yscrollcommand"] = self.scrollY.set
+		
+		self.rightframe = Frame(self)
+		self.rightframe.grid(row = 0, column = 3, rowspan = 2,
+		                     sticky = N+E+S+W)
+		
+		self.importbutton = Button(self.rightframe,
+		                           command = filebackend.import_file,
+		                           text = "Import A Hat Trace File")
+		self.importbutton.grid(row = 0, column = 0, sticky=N+E+W) # sticky N?
+		
+		self.fileframe = Frame(self.rightframe)
+		self.fileframe.grid(row = 1, column = 0, sticky = N+E+W)
+		
+		self.filelabel = Label(self.fileframe, text = "File:")
+		self.filelabel.grid(row = 0, column = 0, sticky = W)
+		
+		self.filemenuchooser = PopupMenu(filebackend, self.fileframe)
+		self.filemenuchooser.grid(row = 0, column = 1, sticky = E+W)
+		
+		self.gobutton = Button(self.rightframe, text = "Go",
+		                       command = filebackend.go)
+		self.gobutton.grid(row = 2, column = 0, sticky = N+E+W)
 
 # TODO: why is viewer a separate class? This could all be part of App.
 class Viewer(Canvas):
@@ -106,7 +145,6 @@ class Viewer(Canvas):
 		self.backend = backend
 		if hasattr(backend, "setgui"):
 			backend.setgui(self)
-		# TODO: maybe None is a valid state? for some sort of pure viewer?
 		self.bind("<Button-3>", self.handle_right_click, add="+")
 		self.bind("<Button-1>", self.handle_left_click, add="+")
 	
@@ -226,8 +264,8 @@ class ProgramText(Text):
 	# can't override either __str__ or __repr__ (or both?) for a tkinter
 	# object
 
-def gui_go(backend):
-	app = App(backend)
+def gui_go(backend, filebackend):
+	app = App(backend, filebackend)
 	app.master.title("Sombrero")
 	return app.mainloop()
 
