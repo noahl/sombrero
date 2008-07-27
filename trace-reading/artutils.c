@@ -368,18 +368,6 @@ readSRAt (FileOffset fo)
   }
 }
 
-char*
-srFile (SrcRef* sr)      { return sr->srcname; }
-int
-srLine (SrcRef* sr)      { return sr->line; }
-int
-srColumn (SrcRef* sr)    { return sr->column; }
-int
-srLineEnd (SrcRef* sr)   { return sr->lineend; }
-int
-srColumnEnd (SrcRef* sr) { return sr->columnend; }
-
-
 /* readValueAt() returns a struct containing a readable notation of the
  * value-Exp stored at the given location in the file.
  */
@@ -1149,30 +1137,6 @@ isDoLambda (FileOffset fo)
         break;
   }
 }
-
-
-/* Get the an name of an identifier out of its struct Ident. */
-char*
-identName     (Ident* id) { return id->idname; }
-char*
-identModName  (Ident* id) { return id->modname; }
-char*
-identSrcFile  (Ident* id) { return id->srcname; }
-int
-identFixity   (Ident* id) { return (int)id->fixity; }
-int
-identArity    (Ident* id) { return (int)id->arity; }
-int
-identDefnLine (Ident* id) { return id->defnline; }
-int
-identDefnCol  (Ident* id) { return id->defncolumn; }
-int
-identDefnLineEnd (Ident* id) { return id->defnlineend; }
-int
-identDefnColEnd  (Ident* id) { return id->defncolumnend; }
-Bool
-identIsTraced (Ident* id) { return id->isTraced; }
-
 
 /* For all nodes, get number of arguments. */
 int

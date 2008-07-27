@@ -99,16 +99,6 @@ Bool		isConstructor	(FileOffset fo);
 Bool		isConstrFields	(FileOffset fo);
 Bool		isLambda	(FileOffset fo);
 Bool		isDoLambda	(FileOffset fo);
-char*		identName	(Ident* id);
-char*		identModName	(Ident* id);
-char*		identSrcFile	(Ident* id);
-int		identFixity	(Ident* id);
-int		identArity	(Ident* id);
-int		identDefnLine	(Ident* id);
-int		identDefnCol	(Ident* id);
-int		identDefnLineEnd(Ident* id);
-int		identDefnColEnd	(Ident* id);
-Bool		identIsTraced	(Ident* id);
 int		getExpArity	(FileOffset fo);
 FileOffset	getExpArg	(FileOffset fo, int n);
 FileOffset      peekExpArg      (FileOffset fo, int n);
@@ -119,13 +109,6 @@ FileOffset	peekTrace	(FileOffset fo);
 FileOffset	getResult	(FileOffset fo, Bool stopAtHidden);
 FileOffset	getResultNoCycle(FileOffset fo, Bool stopAtHidden);
 FileOffset	peekResult	(FileOffset fo);
-
-char*		srFile		(SrcRef* sr);
-int		srLine		(SrcRef* sr);
-int		srColumn	(SrcRef* sr);
-int		srLineEnd	(SrcRef* sr);
-int		srColumnEnd	(SrcRef* sr);
-
 
 /* prototypes for other tools */
 void		ctrlC			(int sig);
