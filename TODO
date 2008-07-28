@@ -3,3 +3,5 @@ To do for Sombrero:
 	- Change the layout system so that we can display two nodes without having to show everything in between them. A good way to start on this is to add the ability to delete nodes, while readjusting their containing layouts and handling their child layouts nicely - started
 	- Have layouts draw lines between the things they connect, possibly with arrows
 	- Integrate the trace generation part with the trace viewing part
+	- There's a new Python library called ctypes that might be better than SWIG. Check it out.
+		- Update: the version in Python 2.5 is pretty hackish, but it might get better. And SWIG is pretty hackish too. This is worth looking at more.
