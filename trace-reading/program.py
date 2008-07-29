@@ -174,10 +174,13 @@ class State(object):
 		self.haveOpenFile = False # flag - do we have a file open or not?
 		self.openfilenames = []
 	
+	def open_file_names(self):
+		return self.openfilenames
+	
 	def import_file(self, filename):
 		#print "Importing file", repr(filename), "!"
 		if filename.endswith(".hat"):
-			Artutils.openHatFile("Test", filename)
+			Artutils.openHatFile("Sombrero", filename)
 			self.haveOpenFile = True
 			self.openfilenames.append(filename)
 			self.hatfile = filename
@@ -189,7 +192,7 @@ class State(object):
 		if filename in self.openfilenames:
 			if self.haveOpenFile:
 				Artutils.closeHatFile()
-			Artutils.openHatFile(filename)
+			Artutils.openHatFile("Sombrero", filename)
 			self.hatfile = filename
 		else:
 			raise Exception("The file '" + filename + "' can't be \

@@ -480,7 +480,7 @@ def exec_functiondef(fdef):
 	assert fdef.__class__ == _ast.FunctionDef	
 
 	# we don't handle all cases yet
-	if (len(fdef.decorator_list) == 0
+	if (len(fdef.decorators) == 0
 	    and len(fdef.args.defaults) == 0
 	    and fdef.args.vararg == None
 	    and fdef.args.kwarg == None):
