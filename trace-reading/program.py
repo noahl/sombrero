@@ -170,11 +170,31 @@ def isValueExp(tag):
 # executing programs.
 # right now, this is a completely unnecessary dummy class
 class State(object):
+	def __init__(self):
+		self.haveOpenFile = False # flag - do we have a file open or not?
+		self.openfilenames = []
+	
 	def import_file(self, filename):
 		#print "Importing file", repr(filename), "!"
-		f = open(filename)
-		Artutils.openHatFile("Test", filename)
-		self.hatfile = filename
+		if filename.endswith(".hat"):
+			Artutils.openHatFile("Test", filename)
+			self.haveOpenFile = True
+			self.openfilenames.append(filename)
+			self.hatfile = filename
+		else:
+			raise Exception("The file '" + filename + "' has an \
+			                 unknown type, and cannot be imported")
+	
+	def switch_to_file(self, filename):
+		if filename in self.openfilenames:
+			if self.haveOpenFile:
+				Artutils.closeHatFile()
+			Artutils.openHatFile(filename)
+			self.hatfile = filename
+		else:
+			raise Exception("The file '" + filename + "' can't be \
+			                 traced because it hasn't been \
+			                 imported yet!")
 	
 	# default_program: return a program object to use when the user doesn't
 	# specify one

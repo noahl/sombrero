@@ -17,13 +17,15 @@ class ViewState(object):
 	def setgui(self, gui):
 		self.gui = gui
 	
+	def makeNewProgramBox(self, program):
+		b = ProgramBox(program, self)
+		self.gui.addNode(b)
+	
+	def makeDefaultProgramBox(self):
+		self.makeNewProgramBox(self.programstate.default_program())
+	
 	def context_choices(self):
-		def makeNewProgramBox():
-			b = ProgramBox(self.programstate.default_program(),
-			               self)
-			self.gui.addNode(b)
-
-		return (("Make a new program box", makeNewProgramBox),
+		return (("Make a new program box", makeDefaultProgramBox),
 		        ("Import a new file",
 		          lambda: gui.fileDialog(
 		            lambda f: self.programstate.import_file(f))))
@@ -99,26 +101,33 @@ class ProgramBox(object):
 class FileState(object):
 	def __init__(self, programstate):
 		self.programstate = programstate
+		# also have self.viewstate, thanks to a hack.
 	
 	def default_text(self):
 		return "Choose a file"
 	
 	def context_choices(self):
-		return (("Choose a file", self.choosefile),)
-	
-	def choosefile(self):
-		print "Choosing a file!"
+		filenames = self.programstate.open_file_names()
+		choices = [(fname, lambda: self.set_file(fname)) for fname in filenames]
+		if len(choices) > 0:
+			choices.append(())
+		choices.append(("Choose a file", self.import_file))
+		return tuple(choices)
 	
 	def import_file(self):
-		print "Importing a file!"
+		gui.fileDialog(lambda f: self.programstate.import_file(f))
+	
+	def set_file(self, filename):
+		self.programstate.switch_to_file(filename)
 	
 	def go(self):
-		print "GO GO GO GO GO!"
+		self.viewstate.makeDefaultProgramBox()
 
 if __name__ == '__main__':
 	ps = State()
 	fs = FileState(ps)
 	vs = ViewState(ps, fs)
+	fs.viewstate = vs # XXX: hack.
 	gui.gui_go(vs, fs)
 
 # -------------
