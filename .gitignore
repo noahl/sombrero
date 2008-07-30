@@ -30,6 +30,9 @@ Trace.py
 # exclude generated lib files
 lib/
 
+# exclude the odd file the hat viewing tools make
+test.txt
+
 # exclude executables
 hat-check
 tracetest
