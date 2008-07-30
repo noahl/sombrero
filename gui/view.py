@@ -25,7 +25,7 @@ class ViewState(object):
 		self.makeNewProgramBox(self.programstate.default_program())
 	
 	def context_choices(self):
-		return (("Make a new program box", makeDefaultProgramBox),
+		return (("Make a new program box", self.makeDefaultProgramBox),
 		        ("Import a new file",
 		          lambda: gui.fileDialog(
 		            lambda f: self.programstate.import_file(f))))
