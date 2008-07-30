@@ -234,6 +234,8 @@ def eval_tracing(ast):
 		res = eval_boolop(ast)
 	elif ast.__class__ == _ast.Call:
 		res = eval_call(ast)
+	elif ast.__class__ == _ast.Compare:
+		res = eval_compare(ast)
 	elif ast.__class__ == _ast.Name:
 		res = eval_name(ast)
 	elif ast.__class__ == _ast.Num:
@@ -475,6 +477,84 @@ def eval_call(call):
 			raise TypeError, ("Object " + func + " is not callable")
 	else:
 		raise Exception, "Unhandled case in eval_call!"
+
+primitive_eq = lazy_writer("==", 2)
+primitive_neq = lazy_writer("!=", 2)
+primitive_lt = lazy_writer("<", 2)
+primitive_gt = lazy_writer(">", 2)
+primitive_lte = lazy_writer("<=", 2)
+primitive_gte = lazy_writer(">=", 2)
+primitive_is = lazy_writer("is", 2)
+primitive_isnt = lazy_writer("is not", 2)
+primitive_in = lazy_writer("in", 2)
+primitive_nin = lazy_writer("not in", 2)
+cmpoptable = {_ast.Eq    : (primitive_eq, lambda a,b: a == b),
+              _ast.NotEq : (primitive_neq, lambda a,b: a != b),
+              _ast.Lt    : (primitive_lt, lambda a,b: a < b),
+              _ast.LtE   : (primitive_lte, lambda a,b: a <= b),
+              _ast.Gt    : (primitive_gt, lambda a,b: a > b),
+              _ast.GtE   : (primitive_gte, lambda a,b: a >= b),
+              _ast.Is    : (primitive_is, lambda a,b: a is b),
+              _ast.IsNot : (primitive_isnt, lambda a,b: a is not b),
+              _ast.In    : (primitive_in, lambda a,b: a in b),
+              _ast.NotIn : (primitive_nin, lambda a,b: a not in b)}
+def eval_compare(compare):
+	assert compare.__class__ == _ast.Compare
+		
+	lt = eval_tracing(compare.left)
+	rt = eval_tracing(compare.comparators[0])
+	oper = cmpoptable[compare.ops[0].__class__]
+	ap = mkApp2(parents[-1],
+	             0,
+	             mkValueUse(parents[-1], 0, oper[0]()),
+	             lt[1],
+	             rt[1])
+	
+	def ev():
+		left = lt  # next four lines are because Python doesn't
+		right = rt # actually do lexical scoping
+		app = ap
+		op = oper
+		leftr = left[0]()[0]
+		rightr = right[0]()[0]
+		entResult(app, 0)
+		pyres = op[1](leftr, rightr) # Python result - doesn't have a trace
+		
+		if not pyres:
+			tres = mkValueUse(app, 0, primitive_false())
+			resResult(app, tres, 0)
+			return (False, tres)
+		
+		left = right
+		
+		# we trace chained comparisons so that each non-final one
+		# results in the next. (TODO: reconsider this? I can't tell if
+		# it's elegant or a terrible hack.)
+		for (op, val) in zip(compare.ops[1:], compare.comparators[1:]):
+			opt = cmpoptable[op.__class__]
+			right = eval_tracing(val)
+			napp = mkApp2(parents[-1],
+			              0,
+			              mkValueUse(parents[-1], 0, opt[0]()),
+			              left[1],
+			              right[1])
+			resResult(app, napp, 0)
+			entResult(napp, 0)
+			leftr = left[0]()[0]
+			rightr = right[0]()[0]
+			pyres = opt[1](leftr, rightr)
+			if not pyres:
+				tres = mkValueUse(napp, 0, primitive_false())
+				resResult(napp, tres, 0)
+				return (False, tres)
+			left = right
+			app = napp
+		
+		tres = mkValueUse(app, 0, primitive_true())
+		resResult(app, tres, 0)
+		return (True, tres)
+	
+	return (ev, ap)
 
 def exec_functiondef(fdef):
 	assert fdef.__class__ == _ast.FunctionDef	
