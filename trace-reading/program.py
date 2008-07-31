@@ -5,6 +5,8 @@ import Art
 
 import trace_interpret
 
+import os.path # for the file-handling bits
+
 # the Program class represents a traced program
 # this implementation returns information from a Hat trace file
 
@@ -164,34 +166,106 @@ def programFromString(string, state):
 	# use of the function 'main' in the trace state.hatfile.
 	return state.default_program()
 
+# two file classes, to abstract over the difference between hat files and
+# python files
+class HatFile(object):
+	def __init__(self, filename):
+		self.filename = filename
+		self.isOpen = False # "open" includes "resumed" here
+	
+	# open: open the file for the first time.
+	def open(self):
+		if not self.isOpen:
+			Artutils.openHatFile("Sombrero", self.filename)
+			self.isOpen = True
+	
+	# suspend: switch away from this file, but be ready to reopen it.
+	def suspend(self):
+		if self.isOpen:
+			Artutils.closeHatFile()
+			self.isOpen = False
+	
+	# resume: come back to this file after it has been suspended, but not
+	# closed.
+	def resume(self):
+		if not self.isOpen:
+			Artutils.openHatFile("Sombrero", self.filename)
+			self.isOpen = True
+	
+	# close: close this file without the intention of coming back to it.
+	def close(self):
+		if self.isOpen:
+			Artutils.closeHatFile()
+			self.isOpen = False
+	
+	# name: return a string to identify this file in menus and such.
+	def name(self):
+		return self.filename
+
+class PythonFile(object):
+	def __init__(self, filename):
+		self.filename = filename
+		self.tracename = os.path.basename(self.filename) + ".hat"
+		self.isOpen = False # "open" includes "resumed" here
+	
+	def open(self):
+		if not self.isOpen:
+			trace_interpret.trace_file(self.filename)
+			Artutils.openHatFile("Sombrero", self.tracename)
+			self.isOpen = True
+	
+	def suspend(self):
+		if self.isOpen:
+			Artutils.closeHatFile()
+			self.isOpen = False
+		# we close the hat file, but our functiondefs stay in the
+		# environment
+	
+	def resume(self):
+		if not self.isOpen:
+			Artutils.openHatFile("Sombrero", self.tracename)
+			self.isOpen = True
+	
+	def close(self):
+		if self.isOpen:
+			Artutils.closeHatFile()
+			self.isOpen = False
+	
+	def name(self):
+		return self.filename
+
 # class State: holds the state of a computer. Provides the environment for
 # executing programs.
 # right now, this is a completely unnecessary dummy class
 class State(object):
 	def __init__(self):
-		self.haveOpenFile = False # flag - do we have a file open or not?
-		self.openfilenames = []
+		self.openFile = None # store the open file or None
+		self.openFiles = []
 	
-	def open_file_names(self):
-		return self.openfilenames
+	# open_file_pairs: return a list of (name, file) pairs.
+	def open_file_pairs(self):
+		return [(f.name(), f) for f in self.openFiles]
 	
 	def import_file(self, filename):
 		#print "Importing file", repr(filename), "!"
 		if filename.endswith(".hat"):
-			Artutils.openHatFile("Sombrero", filename)
-			self.haveOpenFile = True
-			self.openfilenames.append(filename)
-			self.hatfile = filename
+			f = HatFile(filename)
+		elif filename.endswith(".py"):
+			f = PythonFile(filename)
 		else:
 			raise Exception("The file '" + filename + "' has an \
 			                 unknown type, and cannot be imported")
+		
+		f.open()
+		self.openFiles.append(f)
+		self.openFile = f
 	
-	def switch_to_file(self, filename):
-		if filename in self.openfilenames:
-			if self.haveOpenFile:
-				Artutils.closeHatFile()
-			Artutils.openHatFile("Sombrero", filename)
-			self.hatfile = filename
+	def switch_to_file(self, f):
+		if f in self.openFiles:
+			if self.openFile is not None:
+				self.openFile.suspend()
+			f.resume()
+			self.openFile = f
 		else:
 			raise Exception("The file '" + filename + "' can't be \
 			                 traced because it hasn't been \

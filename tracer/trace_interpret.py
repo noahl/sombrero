@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+# trace-interpret.py: interpret a Python file while making a Hat 2.04-format
+# trace file recording the execution.
+
 import _ast
 from Trace import * # everything in here is prefixed with "hat_" or "mk" anyway
 import sys # for stdout, for eval_print
@@ -249,7 +252,7 @@ def eval_tracing(ast):
 	
 	def wrapper():
 		result = res[0]()
-		print ast_indented_str(ast, 0), "\nEvaluates To:\n", result[0]
+		#print ast_indented_str(ast, 0), "\nEvaluates To:\n", result[0]
 		return result
 	
 	return (wrapper, res[1])
@@ -400,7 +403,7 @@ def eval_boolop(boolop):
 
 class traced_function(object):
 	def __init__(self, args, body):
-		self.args = args
+		self.args = args # args and body are both ASTs.
 		self.body = body
 
 def trace_value(val, parent):
@@ -423,7 +426,7 @@ def eval_call(call):
 		argsr = map(lambda(x): x[0]()[0], args)
 		
 		if funcr.__class__ == traced_function:
-			print "Evaluating a call to a traced function"
+			#print "Evaluating a call to a traced function"
 			
 			app = mkAppn(parents[-1], 0, func[1], len(args), *tuple([x[1] for x in args]))
 			# we already know that the function takes only
@@ -433,7 +436,7 @@ def eval_call(call):
 			                       [(v, Param(r[1])) for (v, r) in zip(argsr, args)])))
 			parents.append(app)
 			
-			print "New call frame:", frames[-1]
+			#print "New call frame:", frames[-1]
 			
 			try: # this stuff should really be in an exec_block function
 				entResult(app, 0)
@@ -447,7 +450,7 @@ def eval_call(call):
 			finally:
 				parents.pop()
 				frames.pop()
-				print "Done with call"
+				#print "Done with call"
 		elif callable(funcr): # calling an unwrapped function
 			app = mkAppn(parents[-1], 0, func[1], len(args), *tuple(map(lambda(x):x[1], args)))
 			def ev():
@@ -527,7 +530,7 @@ def eval_compare(compare):
 		
 		left = right
 		
-		# we trace chained comparisons so that each non-final one
+		# we chain traced comparisons so that each non-final one
 		# results in the next. (TODO: reconsider this? I can't tell if
 		# it's elegant or a terrible hack.)
 		for (op, val) in zip(compare.ops[1:], compare.comparators[1:]):
@@ -600,7 +603,6 @@ def exec_if(exp):
 	else:
 		res = exec_stmts(exp.orelse)
 	
-
 	resResult(trace, mkValueUse(parents[-1], 0, primitive_none()), 0)
 	
 	parents.pop()
@@ -775,6 +777,60 @@ def trace_file(filename):
 		assert len(parents) == 0
 	finally:
 		hat_Close()
+	
+	print "End program terminal"
+	
+	# XXX: AAAAH! THIS IS A TERRIBLE HACK THAT SHOULD BE FIXED! This code
+	# scans the top-level environment for any traced_function objects and
+	# saves them for future runs. It is important to save traced function
+	# ASTs after we interpret a file so that we can evaluate future
+	# interactively-interpreted expressions with them. However, this is not
+	# a correct implementation of Python semantics, because it does not
+	# save top-level non-function variables and it does not do anything
+	# useful with closures (although that's not entirely the fault of this
+	# section of the code - class traced_function could be modified to keep
+	# an environment around, which should somewhat take care of that,
+	# except that then the closure environments would need to be saved for
+	# retracing too). Those defects should be fixed.
+	# Alternatively, we could not bother saving the ASTs for anything, but
+	# put all of the traces for one run of Sombrero into one trace file,
+	# which would just have multiple entry points. This would be an elegant
+	# solution to this problem, except that ASTs really *should* be saved
+	# so that the user can use them later.
+	# A third option, of course, is to change from an interpreter to a
+	# translater, translate traced function definitions as objects that
+	# trace themselves, and let Python handle the environments. This would
+	# be great except for the effort required to make it work.
+	# Ideally all three of these things would be done - ASTs would be saved
+	# so the user could dump his or her function definitions to a file at
+	# the end of a sombrero session, this would be a translater rather than
+	# an interpreter, and we would save everything with maximum efficiency,
+	# either in one big file or in several little files with cross-file
+	# references.
+	
+	print "Number of frames:", len(frames)
+	print "Environment size:", len(frames[0])
+	
+	print "Saved environment:"
+	for (name, (val, trace)) in frames[0].iteritems():
+		if val.__class__ == traced_function:
+			print "Traced function", name, "with args", \
+			      ast_indented_str(val.args, 26+len(name)), ":"
+			print ast_indented_str(val.body, 0)
+		else:
+			print "Unsaved variable:", name
+	
+	# XXX: AAAAH! MORE INSANTIY! The saved environment for future
+	# computations is kept in a global variable, instead of being passed
+	# into and out of trace_... like it should be. (*Those* functions, of
+	# course, could put it into a global variable and retrieve the results
+	# later, but the interface should probably take arguments and return
+	# values.)
+	for (name, (val, trace)) in frames[0].iteritems():
+		if val.__class__ != traced_function:
+			del frames[0][name]
+	
+	print "Final environment size:", len(frames[0])
 
 def _main():
 	import sys

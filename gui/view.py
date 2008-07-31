@@ -78,10 +78,6 @@ class ProgramBox(object):
 	def name(self):
 		return self.program.name()
 	
-	def recompute(self):
-		print "Recompute!"
-		#self.program()
-
 	# program: returns self's program, but first makes sure it exists, and
 	#          generates it if necessary
 	# commented out until we generate programs from strings
@@ -130,8 +126,9 @@ class FileState(object):
 		return "Choose a file"
 	
 	def context_choices(self):
-		filenames = self.programstate.open_file_names()
-		choices = [(fname, lambda: self.set_file(fname)) for fname in filenames]
+		filepairs = self.programstate.open_file_pairs()
+		choices = [(fname, lambda: self.programstate.switch_to_file(f))
+		           for (fname, f) in filepairs]
 		if len(choices) > 0:
 			choices.append(())
 		choices.append(("Choose a file", self.import_file))
@@ -139,9 +136,6 @@ class FileState(object):
 	
 	def import_file(self):
 		gui.fileDialog(lambda f: self.programstate.import_file(f))
-	
-	def set_file(self, filename):
-		self.programstate.switch_to_file(filename)
 	
 	def go(self):
 		self.viewstate.makeDefaultProgramBox()
