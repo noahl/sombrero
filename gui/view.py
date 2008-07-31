@@ -24,11 +24,26 @@ class ViewState(object):
 	def makeDefaultProgramBox(self):
 		self.makeNewProgramBox(self.programstate.default_program())
 	
+	def makeEntryBox(self):
+		self.gui.addNode(EntryBox(self))
+	
 	def context_choices(self):
-		return (("Make a new program box", self.makeDefaultProgramBox),
+		return (("Enter a program", self.makeEntryBox),
+		        ("Make a new program box", self.makeDefaultProgramBox),
 		        ("Import a new file",
 		          lambda: gui.fileDialog(
 		            lambda f: self.programstate.import_file(f))))
+
+# an EntryBox holds a string, which will be interpreted as a Python expression.
+class EntryBox(object):
+	def __init__(self, viewstate):
+		self.viewstate = viewstate
+	
+	def setgui(self, gui):
+		self.gui = gui
+	
+	def context_choices(self):
+		return ()
 
 # a ProgramBox holds a computation. it may have a result.
 # a ProgramBox is the visual representation on the canvas of the same thing

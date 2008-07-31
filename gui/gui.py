@@ -45,7 +45,8 @@ def popupMenu(x, y, menu):
 
 # makeMenu: take a master and a list of (string, function) pairs, and returns a
 # Menu object with the strings as labels, the functions as matching commands,
-# and no tearoff. The functions should take no arguments.
+# and no tearoff. The functions should take no arguments. You can also pass a
+# 0-tuple in the list to indicate a separator.
 # usage: makeMenu(master, ("name", function), ("name2", function2), ...)
 def makeMenu(master, *items):
 	menu = Menu(master, tearoff = 0)
@@ -64,6 +65,9 @@ def makeMenu(master, *items):
 # PopupMenu: has a button which pops up a menu of choices. the text of the
 # button is whatever choice is selected.
 # this class acts kind of like a Tkinter widget, but really isn't.
+# note: this is a different sort of widget than the other things named 'popup'.
+# this is because I don't know the real names for either of these sorts of
+# things.
 class PopupMenu(object):
 	def __init__(self, backend, master = None):
 		self.backend = backend
@@ -77,6 +81,49 @@ class PopupMenu(object):
 		                       menu)
 	def grid(self, *args, **kwargs):
 		self.button.grid(*args, **kwargs)
+
+# PopupManager: helps things which have to deal with popup menus. if you are a
+# Tkinter widget, just make one of these for your class, bind your left and
+# right click handlers to its left and right click methods and set its options
+# callback to something that returns makeMenu-style menu choices, and let it
+# manage popups for you.
+class PopupManager(object):
+	def __init__(self, master = None, chooser = None):
+		self.loc = (50, 50) # the default location
+		self.master = master
+		self.chooser = chooser
+		self.popup = None
+	
+	# Event handling functions:
+	
+	def handle_right_click(self, event):
+		# close our existing popup, if we have one
+		if self.popup is not None:
+			self.popup.unpost()
+			self.popup = None
+			self.popup_loc = (50, 50)
+		
+		# then, get the context menu choices from the backend
+		choices = self.chooser()
+		if choices is not None and len(choices) > 0:
+			self.popup = makeMenu(self.master, *choices)
+			self.popup_loc = (event.x, event.y)
+			popupMenu(event.x_root, event.y_root, self.popup)
+	
+	def handle_left_click(self, event):
+		self.focus_set()
+		if self.popup is not None:
+			self.popup.unpost()
+			self.popup = None
+	
+	# Interface functions:
+	
+	def set_chooser(self, chooser):
+		self.chooser = chooser
+	
+	def popup_location(self):
+		return self.loc
+
 
 # TODO: I got the idea for an App class from the NMT Tkinter tutorial, but I
 #       think it might be outdated or just wrong. I should check up on this and
@@ -142,47 +189,56 @@ class Viewer(Canvas):
 	def __init__(self, backend, master=None):
 		Canvas.__init__(self, master, state = NORMAL, takefocus = 1,
 		                background = "white")
+		
 		self.backend = backend
 		if hasattr(backend, "setgui"):
 			backend.setgui(self)
-		self.bind("<Button-3>", self.handle_right_click, add="+")
-		self.bind("<Button-1>", self.handle_left_click, add="+")
-	
-	# Event handling functions:
-	
-	# TODO: factor this and the ProgramBox's right click handler into one function
-	def handle_right_click(self, event):
-		# close our existing popup, if we have one
-		if hasattr(self, "popup") and self.popup is not None:
-			self.popup.unpost()
-			del self.popup # this works without this line
-			del self.popup_loc
 		
-		# then, get the context menu choices from the backend
-		choices = self.backend.context_choices()
-		if choices is not None and len(choices) > 0:
-			self.popup = makeMenu(self, *choices)
-			self.popup_loc = (event.x, event.y)
-			popupMenu(event.x_root, event.y_root, self.popup)
-	
-	def handle_left_click(self, event):
-		self.focus_set()
-		if hasattr(self, "popup") and self.popup is not None:
-			self.popup.unpost()
-			del self.popup # this works without this line.
+		self.popupmanager = PopupManager(self, backend.context_choices)
+		
+		self.bind("<Button-3>", self.popupmanager.handle_right_click,
+		          add="+")
+		self.bind("<Button-1>", self.popupmanager.handle_left_click,
+		          add="+")
 	
 	# Interface functions for the backend:
 	
 	def addNode(self, backend):
-		if hasattr(self, "popup_loc") and self.popup_loc is not None:
-			(x, y) = self.popup_loc
-		else:
-			(x, y) = (50, 50)
+		(x, y) = self.popupmanager.popup_location()
 		
 		layout.Node(ProgramText(backend, self), self, x = x, y = y)
+	
+	def addEntryNode(self, backend):
+		(x, y) = self.popupmanager.popup_location()
+		
+		layout.Node(EntryText(backend, self), self, x = x, y = y)
+
+# TODO: merge the next two objects. let people switch over to editing a node
+# whenever they want to.
+
+# EntryText: a type of Text object to let people enter Python expressions and
+# have them run nicely.
+# TODO: make this resizable
+class EntryText(Text):
+	def __init__(self, backend, canvas):
+		self.backend = backend
+		if hasattr(backend, "setgui"):
+			backend.setgui(self)
+		self.canvas = canvas
+		Text.__init__(self, canvas, background = "white",
+		              height = 1, # height is measured in lines
+		              width = 30, # width is measured in characters
+		              wrap = WORD # move a long word to a new line
+		             )
+		
+		self.popupmanager = PopupManager(self, backend.context_choices)
+		
+		self.bind("<Button-3>", self.popupmanager.handle_right_click,
+		          add="+")
+		self.bind("<Button-1>", self.popupmanager.handle_left_click,
+		          add="+")
 
 # ProgramText: a type of Text object to handle the actual display of a program.
-# TODO: let people edit this object, and make it resize nicely when they do.
 class ProgramText(Text):
 	def __init__(self, backend, canvas):
 		self.backend = backend
@@ -197,9 +253,13 @@ class ProgramText(Text):
 		             )
 		self.insert("1.0", text)
 		self.config(state = DISABLED)
-
-		self.bind("<Button-3>", self.handle_right_click, add="+")
-		self.bind("<Button-1>", self.handle_left_click, add="+")
+		
+		self.popupmanager = PopupManager(self, backend.context_choices)
+		
+		self.bind("<Button-3>", self.popupmanager.handle_right_click,
+		          add="+")
+		self.bind("<Button-1>", self.popupmanager.handle_left_click,
+		          add="+")
 		
 		# can't name them 'children' and 'result' or Tkinter will get mad.
 		self.childLayout = None
@@ -207,25 +267,7 @@ class ProgramText(Text):
 	
 	def setnode(self, node):
 		self.node = node
-	
-	# Event handling functions:
-	
-	# TODO: factor this and the Viewer's right click handler into one function.
-	def handle_right_click(self, event):
-		if hasattr(self, "popup") and self.popup is not None:
-			self.popup.unpost()
-			del self.popup
 		
-		choices = self.backend.context_choices()
-		if choices is not None and len(choices) > 0:
-			self.popup = popupMenu(event.x_root, event.y_root,
-			                       makeMenu(self.canvas, *choices))
-	
-	def handle_left_click(self, event):
-		if hasattr(self, "popup") and self.popup is not None:
-			self.popup.unpost()
-			del self.popup # this works without this line.
-	
 	# Interface functions for the backend:
 	
 	# TODO: take this function out and replace it with a real interface.

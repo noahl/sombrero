@@ -3,6 +3,8 @@
 import Artutils
 import Art
 
+import trace_interpret
+
 # the Program class represents a traced program
 # this implementation returns information from a Hat trace file
 
