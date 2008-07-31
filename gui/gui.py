@@ -111,7 +111,7 @@ class PopupManager(object):
 			popupMenu(event.x_root, event.y_root, self.popup)
 	
 	def handle_left_click(self, event):
-		self.focus_set()
+		self.master.focus_set()
 		if self.popup is not None:
 			self.popup.unpost()
 			self.popup = None
@@ -219,6 +219,10 @@ class Viewer(Canvas):
 # EntryText: a type of Text object to let people enter Python expressions and
 # have them run nicely.
 # TODO: make this resizable
+# NOTE: this is a crappy prototype version of what should go here. *This* class
+# can have no children. It can have one result, which will be used as the
+# program that is equivalent to it. It recomputes every time focus leaves it.
+# It should resize itself, but doesn't.
 class EntryText(Text):
 	def __init__(self, backend, canvas):
 		self.backend = backend
@@ -232,11 +236,35 @@ class EntryText(Text):
 		             )
 		
 		self.popupmanager = PopupManager(self, backend.context_choices)
-		
 		self.bind("<Button-3>", self.popupmanager.handle_right_click,
 		          add="+")
 		self.bind("<Button-1>", self.popupmanager.handle_left_click,
 		          add="+")
+		
+		self.bind("<FocusOut>", self.recompute, add="+")
+		
+		self.resultLayout = None
+	
+	def setnode(self, node):
+		self.node = node
+	
+	# Event handling functions
+	
+	def recompute(self, event):
+		self.backend.recompute()
+	
+	# Interface functions for the backend
+	
+	def text(self):
+		return self.get("1.0", "end")
+	
+	def add_result(self, backend):
+		if self.resultLayout is None:
+			self.resultLayout = layout.RowLayout(self.node, self.canvas)
+		
+		self.resultLayout.addNode(layout.Node(ProgramText(backend, self.canvas),
+		                               self.canvas))
+		self.resultLayout.adjust()
 
 # ProgramText: a type of Text object to handle the actual display of a program.
 class ProgramText(Text):
@@ -269,6 +297,14 @@ class ProgramText(Text):
 		self.node = node
 		
 	# Interface functions for the backend:
+	
+	def add_result(self, backend):
+		if self.resultLayout is None:
+			self.resultLayout = layout.RowLayout(self.node, self.canvas)
+		
+		self.resultLayout.addNode(layout.Node(ProgramText(backend, self.canvas),
+		                               self.canvas))
+		self.resultLayout.adjust()
 	
 	# TODO: take this function out and replace it with a real interface.
 	def text(self):

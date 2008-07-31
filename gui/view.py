@@ -5,7 +5,7 @@
 #          the generic DAG-display code, and program.py, which actually knows
 #          how to manipulate programs.
 
-from program import Program, State
+from program import Program, State, programFromString
 import gui
 
 # for the canvas:
@@ -25,7 +25,7 @@ class ViewState(object):
 		self.makeNewProgramBox(self.programstate.default_program())
 	
 	def makeEntryBox(self):
-		self.gui.addNode(EntryBox(self))
+		self.gui.addEntryNode(EntryBox(self))
 	
 	def context_choices(self):
 		return (("Enter a program", self.makeEntryBox),
@@ -38,12 +38,20 @@ class ViewState(object):
 class EntryBox(object):
 	def __init__(self, viewstate):
 		self.viewstate = viewstate
+		self.text = None
 	
 	def setgui(self, gui):
 		self.gui = gui
 	
 	def context_choices(self):
 		return ()
+	
+	def recompute(self):
+		text = self.gui.text()
+		if not text == self.text:
+			self.text = text
+			pr = programFromString(text, self.viewstate.programstate)
+			self.gui.add_result(ProgramBox(pr, self.viewstate))
 
 # a ProgramBox holds a computation. it may have a result.
 # a ProgramBox is the visual representation on the canvas of the same thing
