@@ -37,7 +37,7 @@ tracemodule = Extension("_Trace",
 # debugmodule: not used right now, but would presumably still compile a working tracer
 debugmodule = Extension("_Trace_Debug",
                         define_macros = [("FILEVERSION", "\"2.04\""), ("DEBUG", "")],
-                        sources = ["hat-c.c", "hat-c.i"],
+                        sources = ["tracer/hat-c.c", "tracer/hat-c.i"],
                         swig_opts = ["-importall", "-I/usr/include", "-I."],
                         include_dirs = ["."])
 
@@ -51,6 +51,26 @@ artutilsmodule = Extension("_Artutils",
                            swig_opts = ["-importall", "-I/usr/include", "-I."],
                            include_dirs = ["."])
 
+# artutils debugging module: DOESN'T WORK! The reason, as far as I can tell, is
+# that distutils is trying to be clever in its compilation strategy. It builds
+# artutils first, and it does that correctly. Then, however, when it goes to
+# build debugartutils, it notices that artutils.c has already been compiled and
+# it *doesn't compile it again*, even though this build would have different
+# compile options. I could solve this by switching their order in the list of
+# extension modules, but then all builds would be debug builds.
+# NOTE: probably the other debug modules don't work as well, for the same
+# reason.
+debugartutils = Extension("_Artutils_Debug", 
+                          define_macros = [("FILEVERSION", "\"2.04\""),
+                                           ("VERSION", "\"2.05\""),
+                                           ("DEBUG", "")],
+                          sources = ["trace-reading/artutils.c",
+                                     "trace-reading/pathutils.c",
+                                     "trace-reading/detectutils.c",
+                                     "trace-reading/artutils.i"],
+                          swig_opts = ["-importall", "-I/usr/include", "-I."],
+                          include_dirs = ["."])
+
 artmodule = Extension("_Art",
                       sources = ["trace-reading/art.i"],
                       swig_opts = ["-importall", "-I/usr/include", "-I."],
@@ -60,7 +80,7 @@ artmodule = Extension("_Art",
 setup (name = "Trace",
        version = "First Build",
        description = "This is a package to write Hat traces with Python",
-       ext_modules = [tracemodule, artutilsmodule, artmodule])
+       ext_modules = [tracemodule, debugmodule, artutilsmodule, debugartutils, artmodule])
 
 # XXX - HACK!
 for l in os.listdir("build"): # for everything in the "build" directory

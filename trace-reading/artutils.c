@@ -11,9 +11,7 @@
 #include "pathutils.h"
 #include "ntohl.h"
 
-#define DEBUG 0
-
-#if DEBUG
+#ifdef DEBUG
 #define HIDE(x)	x
 #else
 #define HIDE(x)
@@ -1210,7 +1208,7 @@ getExpArg (FileOffset fo, int n)
   char c;
   int i=0;
   FileOffset ptr;
-  HIDE(fprintf(stderr,"getExpArg 0x%x\n",fo);)
+  HIDE(fprintf(stderr,"getExpArg 0x%x #%d\n",fo,n);)
   freadAt(fo,&c,sizeof(char),1,HatFileRandom);
   switch (lower5(c)) {
     case ExpApp:
@@ -1316,7 +1314,7 @@ peekExpArg (FileOffset fo, int n)
   char c;
   int i=0;
   FileOffset ptr;
-  HIDE(fprintf(stderr,"peekExpArg 0x%x\n",fo);)
+  HIDE(fprintf(stderr,"peekExpArg 0x%x #%d\n",fo,n);)
   assert (n>=0);
   freadAt(fo,&c,sizeof(char),1,HatFileRandom);
   switch (lower5(c)) {

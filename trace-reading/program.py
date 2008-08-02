@@ -34,7 +34,21 @@ class Program(object):
 		self.arity = Artutils.getExpArity(fileoffset)
 	
 	def subexps(self):
-		se = [Program(Artutils.peekExpArg(self.fo, n)) for n in range(0, self.arity+1)]
+		# subexps: right now we have a special case to find the subexps
+		# of a basic expression, because the C function won't let us,
+		# and everything else just calls the C. this is not quite
+		# correct, because there are certain things that are not basic
+		# values but still don't have subexpressions, but we don't deal
+		# with those things right now. however, regardless of
+		# correctness, it might make more sense in the future to switch
+		# the type of special-casing: only call peekExpArg if our typ
+		# meets certain conditions which are known to work, and
+		# otherwise don't.
+		#print "about to find subexps of", self.name()
+		if isBasicExp(self.typ):
+			se = []
+		else:
+			se = [Program(Artutils.peekExpArg(self.fo, n)) for n in range(0, self.arity+1)]
 		#print "the subexps of", self.name(), "are", se
 		return se
 	
@@ -72,6 +86,16 @@ class Program(object):
 				self._result = Program(r)
 		
 		return self._result
+	
+	def definition(self):
+		# return a program object or None
+		if not hasattr(self, "_definition"):
+			if self.typ == Art.ExpConstUse or self.typ == Art.ExpValueUse:
+				self._definition = Program(Artutils.peekExpArg(self.fo, 0))
+			else:
+				self._definition = None
+		
+		return self._definition
 	
 	def name(self):
 		# return a string
@@ -122,23 +146,22 @@ def subNodes(node):
 		#print "finding subnodes from", source
 		if source.parent() != node:
 			#print "no subnodes from", source, "!"
-			return ([], [])
-		elif source.typ == Art.ExpConstUse:
-			#print source, "is a constuse!"
-			return ([], [source.result()]) # result gives the def
-		elif source.typ == Art.ExpValueUse:
-			#print source, "is a valueuse!"
-			return ([], [Artutils.peekExpArg(source.fo, 0)])
+			res = ([], [])
+		elif source.typ == Art.ExpConstUse or source.typ == Art.ExpValueUse:
+			#print source, "is a use!"
+			res = ([], [source.definition()])
 		else:
 			exps = [] # don't count source here - this gets an extra node
 			defs = []
 			for s in source.subexps():
 				e, d = subNodesFrom(s)
-				exps.append(s) # instead, catch nodes here
+				exps.append(s) # instead, catch sources here
 				exps.extend(e)
 				defs.extend(d)
 			#print "subnodes of", source, ":", (exps, defs)
-			return (exps, defs)
+			res = (exps, defs)
+		#print "subnodes from", source, "are", res
+		return res
 	
 	r = node.result()
 	if r is not None:
@@ -157,6 +180,9 @@ def isAtom(tag):
 
 def isValueExp(tag):
 	return tag >= Art.ValueApp and tag <= Art.ConstDef
+
+def isBasicExp(tag):
+	return tag >= Art.ExpChar and tag <= Art.ExpDouble
 
 # programFromString: make a Program from the given string, with the given
 #                    global state
@@ -205,12 +231,14 @@ class HatFile(object):
 class PythonFile(object):
 	def __init__(self, filename):
 		self.filename = filename
-		self.tracename = os.path.basename(self.filename) + ".hat"
+		self.tracename = os.path.splitext(self.filename)[0] + ".hat"
 		self.isOpen = False # "open" includes "resumed" here
 	
 	def open(self):
 		if not self.isOpen:
+			print "Opening Python file", self.filename
 			trace_interpret.trace_file(self.filename)
+			print "Done interpreting file, about to open trace"
 			Artutils.openHatFile("Sombrero", self.tracename)
 			self.isOpen = True
 	
