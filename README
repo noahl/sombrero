@@ -1,0 +1,16 @@
+README file for Sombrero
+
+Quick Start (If you use Unix)
+-----------------------------
+
+1. In a terminal window, go to the Sombrero directory.
+2. Type 'python setup.py build'
+3. Type './sombrero'
+
+
+About Sombrero
+--------------
+
+Sombrero is a utility designed to let you see how your programs actually work. Sombrero is based on Hat, a set of programs which does something similar for Haskell (hence the name - Sombrero is a type of Hat). However, Sombrero only works with Python programs right now.
+
+Sombrero works by interpreting a given Python program in its own special Python interpreter. This interpreter runs the Python program just like the usual interpreter would, but while it runs, it creates a trace file which records all of the actions it had to take to run the program. Sombrero then provides a viewer which lets you look at this file and see what, exactly, your program did. The program is in the Hat 2.04 file format, so all of the usual Hat trace-viewing tools also work with these files.
