@@ -80,7 +80,8 @@ artmodule = Extension("_Art",
 setup (name = "Trace",
        version = "First Build",
        description = "This is a package to write Hat traces with Python",
-       ext_modules = [tracemodule, debugmodule, artutilsmodule, debugartutils, artmodule])
+       ext_modules = [tracemodule, artutilsmodule, artmodule])
+       # add the debugging modules to ext_modules to build them
 
 # XXX - HACK!
 for l in os.listdir("build"): # for everything in the "build" directory
