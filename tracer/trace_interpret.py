@@ -746,7 +746,7 @@ def trace_file(filename):
 
 	# use everything but the last extension
 	import os.path
-	hat_Open("%s%s" % (os.path.split(filename)[0], # strange because I was making it work in Python 2.5
+	hat_Open("%s/%s" % (os.path.split(filename)[0], # XXX: the filename might not always be right.
 	                   os.path.splitext(os.path.split(filename)[1])[0]))
 	
 	global module
@@ -826,8 +826,8 @@ def trace_file(filename):
 	# course, could put it into a global variable and retrieve the results
 	# later, but the interface should probably take arguments and return
 	# values.)
-	for (name, (val, trace)) in frames[0].iteritems():
-		if val.__class__ != traced_function:
+	for name in frames[0].keys(): # can't use iteritems() for deleting.
+		if frames[0][name][0].__class__ != traced_function:
 			del frames[0][name]
 	
 	print "Final environment size:", len(frames[0])
