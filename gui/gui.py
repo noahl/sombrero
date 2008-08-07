@@ -206,12 +206,14 @@ class Viewer(Canvas):
 	def addNode(self, backend):
 		(x, y) = self.popupmanager.popup_location()
 		
-		layout.Node(ProgramText(backend, self), self, x = x, y = y)
+		n = layout.Node(ProgramText(backend, self), self, x = x, y = y)
+		n.do_init()
 	
 	def addEntryNode(self, backend):
 		(x, y) = self.popupmanager.popup_location()
 		
-		layout.Node(EntryText(backend, self), self, x = x, y = y)
+		n = layout.Node(EntryText(backend, self), self, x = x, y = y)
+		n.do_init()
 
 # TODO: merge the next two objects. let people switch over to editing a node
 # whenever they want to.
@@ -261,10 +263,12 @@ class EntryText(Text):
 	def add_result(self, backend):
 		if self.resultLayout is None:
 			self.resultLayout = layout.RowLayout(self.node, self.canvas)
+			self.resultLayout.do_init()
 		
-		self.resultLayout.addNode(layout.Node(ProgramText(backend, self.canvas),
-		                               self.canvas))
-		self.resultLayout.adjust()
+		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
+		self.resultLayout.addNode(n)
+		n.do_init()
+		#self.resultLayout.adjust()
 
 # ProgramText: a type of Text object to handle the actual display of a program.
 class ProgramText(Text):
@@ -301,10 +305,12 @@ class ProgramText(Text):
 	def add_result(self, backend):
 		if self.resultLayout is None:
 			self.resultLayout = layout.RowLayout(self.node, self.canvas)
+			self.resultLayout.do_init()
 		
-		self.resultLayout.addNode(layout.Node(ProgramText(backend, self.canvas),
-		                               self.canvas))
-		self.resultLayout.adjust()
+		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
+		self.resultLayout.addNode(n)
+		n.do_init()
+		#self.resultLayout.adjust()
 	
 	# TODO: take this function out and replace it with a real interface.
 	def text(self):
@@ -318,19 +324,23 @@ class ProgramText(Text):
 	def add_child(self, backend):
 		if self.childLayout is None:
 			self.childLayout = layout.ColumnLayout(self.node, self.canvas)
+			self.childLayout.do_init()
 		
-		self.childLayout.addNode(layout.Node(ProgramText(backend, self.canvas),
-		                              self.canvas))
-		self.childLayout.adjust()
+		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
+		self.childLayout.addNode(n)
+		n.do_init()
+		#self.childLayout.adjust()
 	
 	def add_result(self, backend):
 		#print "adding result", backend
 		if self.resultLayout is None:
 			self.resultLayout = layout.RowLayout(self.node, self.canvas)
+			self.resultLayout.do_init()
 		
-		self.resultLayout.addNode(layout.Node(ProgramText(backend, self.canvas),
-		                               self.canvas))
-		self.resultLayout.adjust()
+		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
+		self.resultLayout.addNode(n)
+		n.do_init()
+		#self.resultLayout.adjust()
 	
 	def delete(self):
 		self.node.delete() # also removes us from the layout
