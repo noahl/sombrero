@@ -61,6 +61,8 @@ class Program(object):
 			else:
 				self._parent = None
 		
+		#print "parent of", self, "is", self._parent
+		
 		return self._parent
 	
 	def children(self):
@@ -98,10 +100,14 @@ class Program(object):
 		return self._definition
 	
 	def name(self):
+		#print "finding the name of a program object"
+		
 		# return a string
 		if not hasattr(self, "_data"):
 			if isExp(self.typ):
+				#print "about to call Artutils.traceFromFO on fileoffset", self.fo
 				self._data = Artutils.traceFromFO(self.fo, 0, 5)
+				#print "Artutils.traceFromFO returned", self._data
 				if self.typ == Art.ExpConstUse:
 					self._data.expr = self._data.expr + " (use)"
 				elif self.typ == Art.ExpConstDef:
@@ -114,6 +120,8 @@ class Program(object):
 					self._data.idname = self._data.idname + " (var)"
 			else:
 				raise Exception("Can't get data for node type " + str(self.typ))
+		
+		#print "have the data structure that holds the name"
 		
 		if isinstance(self._data, Artutils.Trace):
 			return self._data.expr
@@ -142,20 +150,33 @@ def argsMadeBy(author, exp):
 def subNodes(node):
 	# based on traverseReduct in <hat-src>/hattools/HatExplore.hs
 	#print "finding subNodes of", node
+	
+	# subNodesFrom(source): find subnodes of node that are before the given
+	# source in the result/parent graph, including the source.
 	def subNodesFrom(source):
 		#print "finding subnodes from", source
-		if source.parent() != node:
-			#print "no subnodes from", source, "!"
-			res = ([], [])
+		
+		sp = source.parent()
+		
+		#print "the parent of", source, "is", sp
+		
+		if sp != node:
+			#print "the parent of", source, "is not", node, "!"
+			# this might happen if subNodesFrom is called on the
+			# result of node, which was actually created by a child
+			# call from node.
+			if sp is not None:
+				res = subNodesFrom(sp)
+			else:
+				res = ([], [])
 		elif source.typ == Art.ExpConstUse or source.typ == Art.ExpValueUse:
 			#print source, "is a use!"
-			res = ([], [source.definition()])
+			res = ([source], [source.definition()])
 		else:
-			exps = [] # don't count source here - this gets an extra node
+			exps = [source] # include the source in the results
 			defs = []
 			for s in source.subexps():
 				e, d = subNodesFrom(s)
-				exps.append(s) # instead, catch sources here
 				exps.extend(e)
 				defs.extend(d)
 			#print "subnodes of", source, ":", (exps, defs)

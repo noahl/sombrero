@@ -649,14 +649,14 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
           if (hasSrcPos(c)) { foSR = readFO(); }
           parent = readFO();			/* get parent */
           HIDE(fprintf(stderr,"enter parent of 0x%x -> 0x%x\n",fo,parent);)
-          if (c == ExpApp)
+          if (lower5(c) == ExpApp)
           	readFO();			/* skip result */
 	  foExprs[0] = readFO();		/* get fun */
 	  fread(&arity,sizeof(unsigned char),1,HatFileRandom);
 	  for (i=1; i<=arity; i++) {
 	    foExprs[i] = readFO();
           }
-          if (c == ExpApp) {			/* exp 0 is special */
+          if (lower5(c) == ExpApp) {			/* exp 0 is special */
           	(void)readTraceAt(getResult(foExprs[0],True)
           	                 ,&(exprs[0]),sr,&(fixexp[0]),False,depth-1);
           } else {
@@ -674,7 +674,7 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
                              ,&(exprs[i]),sr,&(fixexp[i]),False,depth-1);
           }
 	  *infix = fixexp[0];
-	  if (isInfix(fixexp[0]) && c >= 2) {
+	  if (isInfix(fixexp[0]) && arity >= 2) {
 	    sprintf(buf,"%s",infixPrint(exprs[1],fixexp[1],exprs[0],fixexp[0]
 			    ,exprs[2],fixexp[2]));
 	    for (i=3; i<=arity; i++) {
@@ -682,7 +682,7 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
 	      strcat(buf,exprs[i]);
             }
 	  } else {	/* no fixity */
-	    sprintf(buf,"(%s",exprs[0]);
+	    sprintf(buf,"%s",exprs[0]);
 	    for (i=1; i<=arity; i++) {
 	      strcat(buf," ");
 	      if (isInfix(fixexp[i])) {
@@ -692,7 +692,6 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
 	      } else
 	        strcat(buf,exprs[i]);
             }
-	    strcat(buf,")");
 	  }
 	  *expr = strdup(buf);
           *sr   = readSRAt(foSR);
@@ -727,7 +726,7 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
       case ExpGuard:
       case ExpCase:
       case ExpIf:
-        { FileOffset foCond, foSR;
+        { FileOffset foCond, foSR = 0;
 	  char* cond;
 	  int fixcond;
           if (hasSrcPos(c)) { foSR = readFO(); }
@@ -808,9 +807,15 @@ readTraceAt (FileOffset fo, char** expr, SrcRef** sr, int* infix
 Trace *
 traceFromFO(FileOffset fo, int followHidden, int depth)
 {
+	HIDE(fprintf(stderr, "traceFromFO called on fileoffset %d\n", fo);)
+	
 	Trace *tr = malloc(sizeof(Trace));
 	
+	HIDE(fprintf(stderr, "traceFromFO has memory\n");)
+	
 	readTraceAt(fo, &(tr->expr), &(tr->sr), &(tr->infix), followHidden, depth);
+	
+	HIDE(fprintf(stderr, "traceFromFO read its trace successfully\n");)
 	
 	return tr;
 }

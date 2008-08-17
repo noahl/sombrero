@@ -574,7 +574,7 @@ def exec_functiondef(fdef):
 		trace = Variable(module,              # module
 		                 0,                   # end
 		                 0,                   # begin
-		                 0,                   # fixity
+		                 3,                   # fixity (see artutils.h, line 78)
 		                 len(fdef.args.args), # arity
 		                 fdef.name,           # name
 		                 False)               # local
