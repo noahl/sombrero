@@ -206,46 +206,65 @@ class Viewer(Canvas):
 	def addNode(self, backend):
 		(x, y) = self.popupmanager.popup_location()
 		
-		n = layout.Node(ProgramText(backend, self), self, x = x, y = y)
+		text = backend.text()
+		n = ProgNode(backend, self, len(text), text, False, x, y)
 		n.do_init()
 	
 	def addEntryNode(self, backend):
 		(x, y) = self.popupmanager.popup_location()
 		
-		n = layout.Node(EntryText(backend, self), self, x = x, y = y)
+		n = ProgNode(backend, self, 30, "", True, x, y)
 		n.do_init()
 
-# TODO: merge the next two objects. let people switch over to editing a node
-# whenever they want to.
-
-# EntryText: a type of Text object to let people enter Python expressions and
-# have them run nicely.
+# ProgNode: a special type of node that can only display text, and also has
+#           nice helper functions for what we're doing.
 # TODO: make this resizable
-# NOTE: this is a crappy prototype version of what should go here. *This* class
-# can have no children. It can have one result, which will be used as the
-# program that is equivalent to it. It recomputes every time focus leaves it.
-# It should resize itself, but doesn't.
-class EntryText(Text):
-	def __init__(self, backend, canvas):
+class ProgNode(layout.Node):
+	# start_text is the initial text to put in this textnode.
+	# start_width is the initial width in characters of this textnode.
+	# editable is a flag that determines whether the text box is editable.
+	# if the text is editable, and if the backend has a method called
+	# 'recompute', that method will be called whenever the text changes.
+	# (XXX: and right now, it might be called when it doesn't change, too.)
+	# start_width isn't always just len(start_text) because you might want
+	#   to (for instance) make an editable textnode with "" as start_text.
+	def __init__(self, backend, canvas, start_width, start_text, editable, x = 0, y = 0):
+		# connect to the backend
 		self.backend = backend
 		if hasattr(backend, "setgui"):
 			backend.setgui(self)
+		
+		# we know the canvas doesn't have a setgui method
 		self.canvas = canvas
-		Text.__init__(self, canvas, background = "white",
-		              height = 1, # height is measured in lines
-		              width = 30, # width is measured in characters
-		              wrap = WORD # move a long word to a new line
-		             )
 		
-		self.popupmanager = PopupManager(self, backend.context_choices)
-		self.bind("<Button-3>", self.popupmanager.handle_right_click,
+		# make our text
+		self.text = Text(canvas, background = "white",
+		                 height = 1, # height is measured in lines
+		                 width = start_width, # width is measured in characters
+		                 wrap = WORD # move a long word to a new line
+		                )
+		self.text.insert("1.0", start_text)
+		if not editable:
+			self.text.config(state = DISABLED)
+		
+		# initialize us as a Node
+		layout.Node.__init__(self, self.text, canvas, x = x, y = y)
+		
+		# we use a PopupManager to manage our popups (I know, I didn't
+		# see it coming either).
+		self.popupmanager = PopupManager(self.text, backend.context_choices)
+		self.text.bind("<Button-3>", self.popupmanager.handle_right_click,
 		          add="+")
-		self.bind("<Button-1>", self.popupmanager.handle_left_click,
+		self.text.bind("<Button-1>", self.popupmanager.handle_left_click,
 		          add="+")
 		
-		self.bind("<FocusOut>", self.recompute, add="+")
+		# connect the editing backend
+		if editable and hasattr(backend, 'recompute'):
+			self.text.bind("<FocusOut>", self.recompute, add="+")
 		
-		self.resultLayout = None
+		# we're going to have some Layout objects later on.
+		self.rightLayout = None
+		self.downLayout = None
 	
 	def setnode(self, node):
 		self.node = node
@@ -253,104 +272,61 @@ class EntryText(Text):
 	# Event handling functions
 	
 	def recompute(self, event):
+		# TODO: only do this if the text changed.
+		# TODO after that: save common structure in two versions of the
+		#                  text.
 		self.backend.recompute()
 	
 	# Interface functions for the backend
 	
-	def text(self):
-		return self.get("1.0", "end")
-	
-	def add_result(self, backend):
-		if self.resultLayout is None:
-			self.resultLayout = layout.RowLayout(self.node, self.canvas)
-			self.resultLayout.do_init()
-		
-		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
-		self.resultLayout.addNode(n)
-		n.do_init()
-		#self.resultLayout.adjust()
-
-# ProgramText: a type of Text object to handle the actual display of a program.
-class ProgramText(Text):
-	def __init__(self, backend, canvas):
-		self.backend = backend
-		if hasattr(backend, "setgui"):
-			backend.setgui(self)
-		self.canvas = canvas
-		text = self.backend.name()
-		Text.__init__(self, canvas, background = "white",
-		              height = 1, # height is measured in lines
-		              width = len(text), # width is measured in characters
-		              wrap = WORD # move a long word to a new line
-		             )
-		self.insert("1.0", text)
-		self.config(state = DISABLED)
-		
-		self.popupmanager = PopupManager(self, backend.context_choices)
-		
-		self.bind("<Button-3>", self.popupmanager.handle_right_click,
-		          add="+")
-		self.bind("<Button-1>", self.popupmanager.handle_left_click,
-		          add="+")
-		
-		# can't name them 'children' and 'result' or Tkinter will get mad.
-		self.childLayout = None
-		self.resultLayout = None
-	
-	def setnode(self, node):
-		self.node = node
-		
-	# Interface functions for the backend:
-	
-	def add_result(self, backend):
-		if self.resultLayout is None:
-			self.resultLayout = layout.RowLayout(self.node, self.canvas)
-			self.resultLayout.do_init()
-		
-		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
-		self.resultLayout.addNode(n)
-		n.do_init()
-		#self.resultLayout.adjust()
-	
 	# TODO: take this function out and replace it with a real interface.
 	def text(self):
 		return self.get("1.0", "end")
-		# "end" works, "END" does not. Is Tkinter documented at all?
-		# Evidence suggests not.
 	
-	def add_parent(self, backend):
-		pass
-	
-	def add_child(self, backend):
-		if self.childLayout is None:
-			self.childLayout = layout.ColumnLayout(self.node, self.canvas)
-			self.childLayout.do_init()
+	def add_right(self, backend):
+		#print "adding node to the right"
 		
-		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
-		self.childLayout.addNode(n)
-		n.do_init()
-		#self.childLayout.adjust()
-	
-	def add_result(self, backend):
-		#print "adding result", backend
-		if self.resultLayout is None:
-			self.resultLayout = layout.RowLayout(self.node, self.canvas)
-			self.resultLayout.do_init()
+		if self.rightLayout is None:
+			self.rightLayout = layout.RowLayout(self, self.canvas)
+			self.rightLayout.do_init()
 		
-		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
-		self.resultLayout.addNode(n)
+		text = backend.text()
+		n = ProgNode(backend, self.canvas, len(text), text, False)
+		
+		# here we try to minimize the number of rightLayouts
+		self.rightLayout.addNodeAfter(self, n)
+		n.rightLayout = self.rightLayout
+		
 		n.do_init()
-		#self.resultLayout.adjust()
+		#self.rightLayout.adjust()
+	
+	def add_down(self, backend):
+		if self.downLayout is None:
+			self.downLayout = layout.ColumnLayout(self, self.canvas)
+			self.downLayout.do_init()
+		
+		text = backend.text()
+		n = ProgNode(backend, self.canvas, len(text), text, False)
+		self.downLayout.addNode(n)
+		n.do_init()
+		#self.downLayout.adjust()
+	
+	# TODO: add_sibling function? (would put another node in whatever
+	#       layout is placing this node.) - probably should be in Node,
+	#       rather than ProgNode
 	
 	def delete(self):
-		self.node.delete() # also removes us from the layout
-		del self.node
+		layout.Node.delete(self) # also removes us from the layout
 		del self.childLayout
 		del self.resultLayout
-		self.destroy()
+		self.text.destroy()
+	
+	__str__ = text
+	__repr__ = text
 	
 	# can't override either __str__ or __repr__ (or both?) for a tkinter
 	# object
+
 
 def gui_go(backend, filebackend):
 	app = App(backend, filebackend)

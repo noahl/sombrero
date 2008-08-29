@@ -85,7 +85,10 @@ class Node(object):
 	# the new() built-in function. look into this.
 	
 	def do_init(self):
+		#print "Node doing its (second) initialization"
+		
 		if hasattr(self, "layout"):
+			#print "Node has the 'layout' attribute"
 			self.layout.adjust()
 		
 		# the following lines work, but I don't know why. the
@@ -122,6 +125,8 @@ class Node(object):
 		return (x1, y1)
 	
 	def moveBy(self, dx, dy):
+		#print "Node moving by", dy, dy
+		
 		self.canvas.move(self.window, dx, dy)
 		
 		for d in self.deps:
@@ -235,8 +240,11 @@ class Layout(object):
 		except ValueError:
 			self.nodes.append(node)
 		else:
-			self.nodes.insert(i, node)
+			#print "adding new node in the middle of a list"
+			self.nodes.insert(i+1, node)
 		finally:
+			if hasattr(node, "setLayout"):
+				node.setLayout(self)
 			self.layout = None
 	
 	# absorb: take the given node, absorb its dependent layouts

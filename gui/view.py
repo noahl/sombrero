@@ -51,7 +51,7 @@ class EntryBox(object):
 		if not text == self.text:
 			self.text = text
 			pr = programFromString(text, self.viewstate.programstate)
-			self.gui.add_result(ProgramBox(pr, self.viewstate))
+			self.gui.add_right(ProgramBox(pr, self.viewstate))
 
 # a ProgramBox holds a computation. it may have a result.
 # a ProgramBox is the visual representation on the canvas of the same thing
@@ -67,15 +67,14 @@ class ProgramBox(object):
 		self.gui = gui
 	
 	def context_choices(self):
-		return (("Show parent", self.show_parent),
-		        ("Show children", self.show_children),
+		return (("Show children", self.show_children),
 		        ("Show result", self.show_result),
 		        (),
 		        ("Hide this", self.hide))
 	
-	# name: temporary method to give the gui a representation string until
+	# text: temporary method to give the gui a representation string until
 	#       we can get a real interface going.
-	def name(self):
+	def text(self):
 		return self.program.name()
 	
 	# program: returns self's program, but first makes sure it exists, and
@@ -90,25 +89,16 @@ class ProgramBox(object):
 	#		    self.programstate)
 		
 	#	return self._program
-	
-	def show_parent(self):
-		if hasattr(self, "parent"):
-			return # we're done in this case
-		else:
-			p = ProgramBox(self.program.parent(),
-			               self.viewstate)
-			self.parent = p
-			self.gui.add_parent(p)
-	
+		
 	def show_children(self):
 		for c in self.program.children():
-			self.gui.add_child(ProgramBox(c, self.viewstate))
+			self.gui.add_down(ProgramBox(c, self.viewstate))
 	
 	def show_result(self):
 		r = self.program.result()
 		
 		if r is not None:
-			self.gui.add_result(ProgramBox(r, self.viewstate))
+			self.gui.add_right(ProgramBox(r, self.viewstate))
 	
 	def hide(self):
 		self.gui.delete()
