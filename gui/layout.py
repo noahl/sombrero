@@ -92,8 +92,8 @@ class Node(object):
 		# self.adjustAll() call at the bottom here will always work,
 		# for reasons that are quite clear, but may be slower than
 		# this. I'm using this for now, but if it ever gets weird, just
-		# comment this stuff and uncomment the call at the bottom of
-		# this method.
+		# comment this stuff out and uncomment the call at the bottom
+		# of this method.
 		overlaps = self.canvas.find_overlapping(*self.canvas.bbox(self.window))
 		if len(overlaps) > 1: # we'll always find ourselves.
 			#print "Overlap! Nodes:", [_nodesById[n]
