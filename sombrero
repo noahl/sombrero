@@ -1,4 +1,4 @@
 #!/bin/sh
 
-PYTHONPATH=.:./gui:./trace-reading:./tracer/:./lib python gui/view.py
+PYTHONPATH=.:./gui:./trace-reading:./tracer/:./lib /usr/bin/python gui/view.py
 

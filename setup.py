@@ -8,6 +8,11 @@ import distutils.ccompiler
 import distutils.dir_util # we need this for a terrible hack.
 import os                 # and we need this for the same hack.
 
+# Enable this next line on IA-64 machines
+IA64 = ["-D__x86_64__"]
+# and this other line on IA-32
+#IA64 = []
+
 # First build the python extension modules
 
 # Note on SWIG:
@@ -27,18 +32,16 @@ import os                 # and we need this for the same hack.
 tracemodule = Extension("_Trace",
                         define_macros = [("FILEVERSION", "\"2.04\"")],
                         sources = ["tracer/hat-c.c", "tracer/hat-c.i"],
-                        swig_opts = ["-importall", "-I/usr/include", "-I."],
+                        swig_opts = ["-importall", "-I/usr/include", "-I."] + IA64,
                         include_dirs = ["."])
                            # distutils handles SWIG!
                            # (could also add "-modern" to swig_opts)
-      # NOTE: if you're building this on an x86-64 computer, you might need to
-      #       add another SWIG option: "-D__x86_64__"
 
 # debugmodule: not used right now, but would presumably still compile a working tracer
 debugmodule = Extension("_Trace_Debug",
                         define_macros = [("FILEVERSION", "\"2.04\""), ("DEBUG", "")],
                         sources = ["tracer/hat-c.c", "tracer/hat-c.i"],
-                        swig_opts = ["-importall", "-I/usr/include", "-I."],
+                        swig_opts = ["-importall", "-I/usr/include", "-I."] + IA64,
                         include_dirs = ["."])
 
 artutilsmodule = Extension("_Artutils",
@@ -48,7 +51,7 @@ artutilsmodule = Extension("_Artutils",
                                       "trace-reading/pathutils.c",
                                       "trace-reading/detectutils.c",
                                       "trace-reading/artutils.i"],
-                           swig_opts = ["-importall", "-I/usr/include", "-I."],
+                           swig_opts = ["-importall", "-I/usr/include", "-I."] + IA64,
                            include_dirs = ["."])
 
 # artutils debugging module: DOESN'T WORK! The reason, as far as I can tell, is
@@ -68,12 +71,12 @@ debugartutils = Extension("_Artutils_Debug",
                                      "trace-reading/pathutils.c",
                                      "trace-reading/detectutils.c",
                                      "trace-reading/artutils.i"],
-                          swig_opts = ["-importall", "-I/usr/include", "-I."],
+                          swig_opts = ["-importall", "-I/usr/include", "-I."] + IA64,
                           include_dirs = ["."])
 
 artmodule = Extension("_Art",
                       sources = ["trace-reading/art.i"],
-                      swig_opts = ["-importall", "-I/usr/include", "-I."],
+                      swig_opts = ["-importall", "-I/usr/include", "-I."] + IA64,
                       include_dirs = ["."])
 
 # (mis?)using setup

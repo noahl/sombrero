@@ -746,8 +746,12 @@ def trace_file(filename):
 
 	# use everything but the last extension
 	import os.path
-	hat_Open("%s/%s" % (os.path.split(filename)[0], # XXX: the filename might not always be right.
-	                   os.path.splitext(os.path.split(filename)[1])[0]))
+	name = os.path.split(filename)[0] + "/" \
+	       + os.path.splitext(os.path.split(filename)[1])[0]
+	
+	print "Opening a hat file named", name, "of type", type(name)
+	hat_Open("interpreter-testing/11-power.py")
+	print "done"
 	
 	global module
 	module = mkModule('Main', filename, True)

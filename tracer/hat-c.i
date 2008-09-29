@@ -6,11 +6,12 @@
 
 %{
 #include "hat-c.h"
+
+extern void hat_Open(char *progname);
 %}
 
-/* This file now works. However, SWIG doesn't know what a FileOffset is, and
- * therefore wraps it with a pointer. I could make this much faster by giving
- * SWIG the typedef for FileOffset (it's a uint32_t). */
+extern void hat_Open(char *progname);
+
+%ignore hat_Open;
 
 %include "hat-c.h"
-

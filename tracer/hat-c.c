@@ -21,7 +21,7 @@
 #endif
 
 /* forward references */
-static void initBuffers();
+static void initBuffers(void);
 static FileOffset writeTag (int tag, int size);
 static void writeByte (int byte);
 static void writeFileOffset (FileOffset offset);
@@ -31,9 +31,9 @@ static void writeDouble (double number);
 static void updateFileOffset (FileOffset at, FileOffset entry); 
 static int stringSize(char *s);
 static void writeString(char *s);
-static void dumpBuffers();
-static void initHiddenChildrenSet();
-static void dumpHiddenChildrenSet();
+static void dumpBuffers(void);
+static void initHiddenChildrenSet(void);
+static void dumpHiddenChildrenSet(void);
 
 /* global variables */
 
@@ -95,6 +95,8 @@ hat_Open(char *progname)
 {
     FileOffset p = 0;
     char filename[256];
+    
+    fprintf(stderr, "hat_Opening \"%s\"\n", progname);
 
     unevaluated = htonl(Unevaluated);
     entered = htonl(Entered);    
@@ -134,6 +136,8 @@ hat_Open(char *progname)
     haskellErrorHandler = hat_Error;
 #endif 
     traceOpen = True;
+    
+    fprintf(stderr, "hat_Open returning\n");
 }
 
 void hat_Close(void)
@@ -186,7 +190,7 @@ hat_Abort(char *msg)
 { hat_ErrorExit(msg, hat_topStack(), -1); }
 
 void
-hat_InterruptExit()
+hat_InterruptExit(void)
 {
   FileOffset node = hat_topStack();
 
@@ -1656,7 +1660,7 @@ mkHidden(FileOffset parent)
   FileOffset fo = writeTag(ExpHidden,1 + 3*sizeof(FileOffset));
   writeFileOffset(parent);
   writeFileOffset(unevaluated);
-  writeFileOffset((FileOffset)NULL);  /* initially empty child list */
+  writeFileOffset((FileOffset)0);  /* initially empty child list */
   HIDE(fprintf(stderr,"\tmkHidden 0x%x 0x%x -> 0x%x\n",parent,Unevaluated,fo);)
   return (fo|~hiddenMask);
 }
@@ -1905,7 +1909,7 @@ FileOffset hat_topStack()
 }
 
 /* returns at-position in host byte order; assumes stack != NULL */
-FileOffset hat_popStack()
+FileOffset hat_popStack(void)
 {
   if (stacktop == 0) {
     Stackpart *oldstack;
@@ -2004,7 +2008,7 @@ WriteBuffer *currentWriteBuffer = buffers;
 int currentWriteBufferNo = 0;
 
 static void 
-initBuffers() 
+initBuffers(void) 
 {
   int i;
 
@@ -2119,7 +2123,7 @@ writeString(char *s)
 }
 
 static void
-dumpBuffers()
+dumpBuffers(void)
 {
   int i;
   fseek(HatFile,0,SEEK_END);
@@ -2156,7 +2160,7 @@ typedef struct hcPart {
 
 static HCPart *hiddenChildrenSet = NULL ;
 
-static void initHiddenChildrenSet()
+static void initHiddenChildrenSet(void)
 {
   hiddenChildrenSet = malloc(sizeof(HCPart));
   if (hiddenChildrenSet == NULL) {
@@ -2168,7 +2172,7 @@ static void initHiddenChildrenSet()
 }
 
 /* Can be invoked any time. The hiddenChildrenSet data structure keeps alive. */
-static void dumpHiddenChildrenSet() 
+static void dumpHiddenChildrenSet(void)
 {
   int i;
   HCPart *curHC = hiddenChildrenSet;
@@ -2218,7 +2222,7 @@ void recordChild(FileOffset hidden,FileOffset child)
     i = 0;
   }
   curHC->entry[i].at = at;
-  curHC->entry[i].child = (FileOffset)NULL;
+  curHC->entry[i].child = (FileOffset)0;
 
  found:
 
