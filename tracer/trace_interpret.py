@@ -603,11 +603,14 @@ def exec_if(exp):
 	else:
 		res = exec_stmts(exp.orelse)
 	
-	resResult(trace, mkValueUse(parents[-1], 0, primitive_none()), 0)
-	
-	parents.pop()
-	
-	return res
+	if isinstance(res, RetVal):
+		resResult(trace, res.val[1], 0)
+		parents.pop()
+		return RetVal((res.val[0], trace))
+	else:
+		resResult(trace, mkValueUse(parents[-1], 0, primitive_none()), 0)
+		parents.pop()
+		return res
 
 def eval_name(name):
 	assert name.__class__ == _ast.Name
@@ -820,7 +823,7 @@ def trace_file(filename):
 		else:
 			print "Unsaved variable:", name
 	
-	# XXX: AAAAH! MORE INSANTIY! The saved environment for future
+	# XXX: AAAAH! MORE INSANITY! The saved environment for future
 	# computations is kept in a global variable, instead of being passed
 	# into and out of trace_... like it should be. (*Those* functions, of
 	# course, could put it into a global variable and retrieve the results
