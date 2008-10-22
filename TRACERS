@@ -1,0 +1,35 @@
+Languages
+---------
+
+	If you want to write a tracer for a new language to add to Sombrero, you will need to provide the following object:
+	
+	class <LanguageTraceObjectName>:
+		def __init__(self, exp): # exp is an expression in your language
+			# make a new object representing that expression
+			...
+		
+		def step(self):
+			# evaluate this expression (or reduce it, if your language is lazy)
+			# this includes making all of your subexpressions and stepping them.
+			# return (value, trace), where value is the value of the expression,
+			#   and trace is the trace of your expression
+			...
+	
+	Everything your object does should be traced. You can trace it with the following API:
+	
+	import Tracer
+	
+	Tracer.makeLiteral(parent, obj) # int literals
+	Tracer.makeFunction(parent, name, minargs, maxargs) # functions
+	Tracer.makeCombination(parent, func, *args) # combinations
+	Tracer.enterComputation(comb)
+	Tracer.finishComputation(comb, result) # returns the final trace for the combination
+	
+	The first three all return trace objects, which can be passed as arguments to the last three.
+	If an error occurs in a computation, it will be caught and attributed to the last thing that
+	enterComputation was called on without a matching finishComputation.
+	
+	Note that Tracer.finishComputation returns a value that is suitable for use as the second half
+	of the return value for <LanguageTraceObjectName>.step. That's not an accident.
+	
+	<LanguageTraceObjectName>.step will only be called once for each LanguageTraceObject.
