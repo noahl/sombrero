@@ -29,6 +29,9 @@ IA64 = ["-D__x86_64__"]
 # modules that you will want to use will *not* have names beginning with an
 # underscore, but I can't tell Distutils that right now.
 
+# TODO: pass a '-outdir=build/swig' option to keep my source directories clean.
+#       one thing at a time, though.
+
 tracemodule = Extension("_Trace",
                         define_macros = [("FILEVERSION", "\"2.04\"")],
                         sources = ["tracer/hat-c.c", "tracer/hat-c.i"],
