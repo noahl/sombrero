@@ -1,0 +1,14 @@
+A Sombrero trace recorder is a way to record traces for later use. A recorder
+most provide the following interfaces.
+
+Recording interface:
+
+	Recorder.makeLiteral(val)
+	Recorder.makeFunction(name, argnames)
+	Recorder.makeComputation(func, args)
+	Recorder.enterComputation(obj)
+	Recorder.finishComputation(obj, result)
+
+Reading interface:
+
+	A Program object, with all that entails.
