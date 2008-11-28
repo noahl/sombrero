@@ -3,12 +3,15 @@ most provide the following interfaces.
 
 Recording interface:
 
-	Recorder.makeLiteral(val)
-	Recorder.makeFunction(name, argnames)
-	Recorder.makeComputation(func, args)
+	Recorder.makeLiteral(parent, val)
+	Recorder.makeFunction(parent, name, argnames)
+	Recorder.makeComputation(parent, func, args)
 	Recorder.enterComputation(obj)
 	Recorder.finishComputation(obj, result)
 
 Reading interface:
 
-	A Program object, with all that entails.
+	Literals and Computations should provide a Program object interface,
+	  with all that entails.
+	Functions and Literals should provide a name() method (a "Data"
+	  interface?)
