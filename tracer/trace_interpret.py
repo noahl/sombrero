@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-# trace-interpret.py: interpret a Python file while making a Hat 2.04-format
-# trace file recording the execution.
+# trace-interpret.py: interpret a Python file while recording its execution
+# through the Recorder interface
 
 import _ast
-from Trace import * # everything in here is prefixed with "hat_" or "mk" anyway
+import Recorder
 import sys # for stdout, for eval_print
 
 # note: exec_stmts is currently implemented as a giant dispatch, but see the
@@ -44,16 +44,17 @@ class lazy_lambda(object):
 # pair and a Variable/ValueUse pair.
 class ConstDef(object):
 	def __init__(self, context, var):
-		self.obj = mkConstDef(context, var)
+		self.obj = Recorder.makeLiteral(context, var)
 	def makeAccess(self, parent, use):
-		return mkConstUse(parent, use, self.obj)
+		#return mkConstUse(parent, use, self.obj)
+		return self
 
 class Variable(object):
 	def __init__(self, module, begin, end, fixity, arity, name, local):
-		self.obj = mkVariable(module, begin, end,
-		                      fixity, arity, name, local)
+		self.obj = Recorder.makeFunction(self, name, [str(i) for i in range(1, arity)]
 	def makeAccess(self, parent, use):
-		return mkValueUse(parent, use, self.obj)
+		#return mkValueUse(parent, use, self.obj)
+		return self
 
 # Param is also a trace object that can be put in an environment. It deals with
 # things that are already evaluated and dont' actually need a trace to be
@@ -91,8 +92,11 @@ def assign(name, val): # val is a pair of (value, trace)
 # store already-written atoms for primitives
 _prims = dict()
 import types
+
 # builtins is special, because I can't think of a better way right now
-builtins = lazy_lambda(lambda: mkModule('__builtins__', "__builtins__.py", False))
+#builtins = lazy_lambda(lambda: mkModule('__builtins__', "__builtins__.py", False))
+builtins = Recorder.top_level
+
 # lookup_primitive: special lookup function for builtins
 def lookup_primitive(name):
 	try:
@@ -104,24 +108,17 @@ def lookup_primitive(name):
 			raise NameError, ("Couldn't find %s!" % (name,))
 
 		if isinstance(val, types.BuiltinFunctionType):
-			atom = mkVariable(builtins(),
-			                  0, # begin
-			                  0, # end
-			                  0, # fixity
-			                  -1, # arity
-			                  name, # name
-			                  False) # local
+			atom = Recorder.makeFunction(builtins, name, [str(i) for i in range(1, arity)])
 		else:
-			atom = mkVariable(builtins(),
-			                  0, 0, 0, 0,
-			                  name, False)
+			atom = Recorder.makeLiteral(Recorder.top_level, val)
 	
 	return (val, atom)
 
 def access_primitive(name, parent):
 	(val, atom) = lookup_primitive(name)
 	
-	return (val, mkValueUse(parent, 0, atom))
+	#return (val, mkValueUse(parent, 0, atom))
+	return (val, atom)
 
 # access: access a variable by name. abstracts over the difference between
 # constdef/constuses and variables/valueuses.
@@ -146,7 +143,7 @@ def access(name, parent):
 # variable name to the trace *if* the name is actually used.
 # note: should probably switch between variables and Consts for arity !=0 and 0
 def lazy_writer(name, arity):
-	return lazy_lambda(lambda: mkVariable(module, 0, 0, 0, arity, name, False))
+	return lazy_lambda(lambda: Recorder.makeFunction(Recorder.top_level, name, [str(i) for i in range(1, arity)]))
 
 def mkAppn(parent, use, func, num, *args):
 	x = len(args) # don't know how good the Python compiler is

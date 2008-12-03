@@ -8,6 +8,8 @@ Recording interface:
 	Recorder.makeComputation(parent, func, args)
 	Recorder.enterComputation(obj)
 	Recorder.finishComputation(obj, result)
+	
+	Recorder.top_level (the root parent)
 
 Reading interface:
 

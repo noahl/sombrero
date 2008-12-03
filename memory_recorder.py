@@ -61,6 +61,9 @@ class Computation(object):
 	def result():
 		return self.result
 
+class TopLevel(object):
+	def __init__(self):
+		self.children = []
 
 def makeLiteral(parent, val):
 	return Literal(parent, val)
@@ -76,3 +79,4 @@ def enterComputation(obj):
 
 def finishComputation(obj, result):
 	obj.finish(result)
+
