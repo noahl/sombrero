@@ -5,8 +5,10 @@
 #          the generic DAG-display code, and program.py, which actually knows
 #          how to manipulate programs.
 
-from program import Program, State, programFromString
+from Tracer import State, programFromString
 import gui
+import Recorder
+import sys
 
 # for the canvas:
 class ViewState(object):
@@ -22,7 +24,7 @@ class ViewState(object):
 		self.gui.addNode(b)
 	
 	def makeDefaultProgramBox(self):
-		self.makeNewProgramBox(self.programstate.default_program())
+		self.makeNewProgramBox(Recorder.default_program())
 	
 	def makeEntryBox(self):
 		self.gui.addEntryNode(EntryBox(self))
@@ -145,6 +147,11 @@ if __name__ == '__main__':
 	fs = FileState(ps)
 	vs = ViewState(ps, fs)
 	fs.viewstate = vs # XXX: hack.
+	
+	# read files to import from the command line
+	for f in sys.argv[1:]:
+		ps.import_file(f)
+	
 	gui.gui_go(vs, fs)
 
 # -------------

@@ -1,0 +1,45 @@
+About This Folder
+-----------------
+
+The folder 'hat files' contains all of the files and folders I created while
+trying to make sombrero read and write hat-2.04-format trace files. (This is
+hat, the debugger for Haskell, currently available at hat.haskell.org.)
+
+This was the first thing I tried with sombrero, so the files also reflect my
+confused state of mind as to how this should actually work.
+
+If you want to see how Hat works, definitely also check out hat.haskell.org.
+The most useful thing is probably the internal memos there, which describe how
+Hat works on the inside. I wish I'd looked at them sooner.
+
+
+
+The things that were used by sombrero:
+
+art.h, ntohl.h - general header files needed by the Hat C code.
+hat-tools/
+	   hat-check - a program from the Hat project that checks a Hat trace
+	   	       file to see if it has the correct format. Modified by me
+		       to be 64-bit compatible.
+sombrero - the old 'sombrero' shell script. this sets the PYTHONPATH correctly
+	   for the old directories.
+tracer/
+	hat-c.c, hat-c.h - modified versions of code from the hat project, which
+		 	   allows a program to write hat-format trace files
+	hat-c.i - an interface file for hat-c.{c,h}, used with SWIG to generate
+		  Python wrappers for them. (This was the module 'Trace').
+trace-reading/ - this folder has code that I used to read hat trace files. this
+	         was before I realized that reading and writing are two sides of
+		 the same coin, and should probably be handled together.
+	       program.py - contains the Python reading interface.
+
+The extra things:
+
+experimentation/ - Hat files I traced while I was trying to figure out the Hat
+		   trace file format.
+trace-generation-testing/ - this has some files I used to make experimental
+			    trace files so I could see how hat traces worked.
+
+
+The .gitignore file in the main project also contains entries that are very
+useful when working with the Hat files.

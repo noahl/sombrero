@@ -1,7 +1,7 @@
 class Value(object):
 	def __init__(self, parent, val):
-		self._parent = parent
-		parent._children.append(self)
+		self.parent = parent
+		parent.children.append(self)
 		self.val = val
 	
 	# Program interface:
@@ -10,7 +10,7 @@ class Value(object):
 		return str(self.val)
 	
 	def parent(self):
-		return self._parent
+		return self.parent
 	
 	def children(self):
 		return []
@@ -21,7 +21,7 @@ class Value(object):
 class Function(object):
 	def __init__(self, parent, name, argnames):
 		self.parent = parent
-		parent._children.append(self)
+		parent.children.append(self)
 		self.name = name
 		self.argnames = argnames
 	
@@ -32,39 +32,38 @@ class Function(object):
 
 class Computation(object):
 	def __init__(self, parent, func, args):
-		self._parent = parent
-		parent._children.append(self)
+		self.parent = parent
+		parent.children.append(self)
 		self.func = func
 		self.args = args
-		self._children = []
+		self.children = []
 		self.entered = False
-		self._result = None
+		self.result = None
 	
 	def enter(self):
 		self.entered = True
 	
 	def finish(self, result):
 		self.entered = False
-		self._result = result
+		self.result = result
 	
 	# Program interface:
 	
 	def name(self):
-		return "Running " + self.func.name
+		return "Running " + self.func.name()
 	
 	def parent(self):
-		return self._parent
+		return self.parent
 	
 	def children(self):
-		print "A compututation's children are:", self._children
-		return self._children
+		return self.children
 	
 	def result(self):
-		return self._result
+		return self.result
 
 class TopLevel(object):
 	def __init__(self):
-		self._children = []
+		self.children = []
 	def default_program(self):
 		if hasattr(self, "dp"):
 			return self.dp
@@ -75,24 +74,24 @@ top_level = TopLevel()
 def makeValue(parent, val):
 	v = Value(parent, val)
 	
-	#if not hasattr(top_level, "dp"):
-	#	top_level.dp = v
+	if not hasattr(top_level, "dp"):
+		top_level.dp = v
 
 	return v
 
 def makeFunction(parent, name, argnames):
-	f = Function(parent, name, argnames)
+	f = Function(parent, val)
 	
-	#if not hasattr(top_level, "dp"):
-	#	top_level.dp = f
+	if not hasattr(top_level, "dp"):
+		top_level.dp = f
 
 	return f
 
 def makeComputation(parent, func, args):
-	c = Computation(parent, func, args)
+	c = Computation(parent, val)
 	
-	#if not hasattr(top_level, "dp"):
-	#	top_level.dp = c
+	if not hasattr(top_level, "dp"):
+		top_level.dp = c
 
 	return c
 
@@ -114,3 +113,12 @@ def set_top_level_program(obj):
 #   moving a tag to a new object is the same as removing it from its old one.
 def makeTag(str):
 	return Tag(str)
+
+class Tag(object):
+	def __init__(self, str):
+		self.str = str
+		self.obj = None
+
+	def moveTo(self, target):
+		if self.obj is not None:
+			
