@@ -20,15 +20,15 @@ class Value(object):
 
 class Function(object):
 	def __init__(self, parent, name, argnames):
-		self.parent = parent
+		self._parent = parent
 		parent._children.append(self)
-		self.name = name
+		self._name = name
 		self.argnames = argnames
 	
 	# Data interface:
 	
 	def name(self):
-		return self.name
+		return self._name
 
 class Computation(object):
 	def __init__(self, parent, func, args):
@@ -50,7 +50,7 @@ class Computation(object):
 	# Program interface:
 	
 	def name(self):
-		return "Running " + self.func.name
+		return "Running " + self.func.name()
 	
 	def parent(self):
 		return self._parent
@@ -61,6 +61,24 @@ class Computation(object):
 	
 	def result(self):
 		return self._result
+
+class Error(object):
+	def __init__(self, parent, desc):
+		self._parent = parent
+		parent._children.append(self)
+		self.desc = desc
+	
+	def name(self):
+		return self.desc
+	
+	def parent(self):
+		return self._parent
+	
+	def children(self):
+		return []
+	
+	def result(self):
+		return None
 
 class TopLevel(object):
 	def __init__(self):
@@ -95,6 +113,11 @@ def makeComputation(parent, func, args):
 	#	top_level.dp = c
 
 	return c
+
+def makeError(parent, desc):
+	e = Error(parent, desc)
+	
+	return e
 
 def enterComputation(obj):
 	obj.enter()

@@ -110,7 +110,10 @@ def eval_tracing(ast):
 		raise Exception, ("Unrecognized AST node %s!" % (ast.__class__.__name__,))
 	
 	def wrapper():
-		result = res[0]()
+		try:
+			result = res[0]()
+		except Exception, ex:
+			result = (ex, Recorder.makeError(parents[-1], str(ex)))
 		#print ast_indented_str(ast, 0), "\nEvaluates To:\n", result[0]
 		return result
 	

@@ -78,6 +78,7 @@ class ProgramBox(object):
 	# name: temporary method to give the gui a representation string until
 	#       we can get a real interface going.
 	def name(self):
+		print "Getting name of program", self.program
 		return self.program.name()
 	
 	# program: returns self's program, but first makes sure it exists, and

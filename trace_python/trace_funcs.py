@@ -23,6 +23,8 @@ import sys
 import trace_utils
 import trace_interpret
 
+primitive_assign = trace_utils.lazy_writer("=", 2)
+primitive_none = trace_utils.lazy_lambda(lambda: Recorder.makeValue(Recorder.top_level, None))
 def exec_assign(asn):
 	assert asn.__class__ == _ast.Assign
 
@@ -31,14 +33,17 @@ def exec_assign(asn):
 	assert name.__class__ == _ast.Name
 	
 	# First, we evaluate the assign's value
-	# Note that this is not quite right, because we should really record
-	# something *first* so that if we get an exception in the calculation,
-	# we can attribute it to the right thing. However, this can be easily
-	# fixed later by adding assign as a primitive and making a computation
-	# here.
+
+	trace = Recorder.makeComputation(trace_interpret.parents[-1], primitive_assign(), [])
+	
+	trace_interpret.parents.append(trace)
+	Recorder.enterComputation(trace)
 
 	val = trace_interpret.eval_tracing(asn.value)
 	valr = val[0]()
+
+	Recorder.finishComputation(trace, primitive_none())
+	trace_interpret.parents.pop()
 
 	# ConstDef here basically puts the program into static single
 	# assignment form. every assignment to a variable makes a new version,
@@ -58,7 +63,7 @@ def exec_assign(asn):
 #		assign(name.id, (valr[0], cdef))
 #		resResult(cdef, val[1], 0) # val, not valr
 	trace_utils.assign(name.id, (valr[0], trace_utils.Accessible(trace_interpret.parents[-1],
-								     val[1])))
+								  trace)))
 
 	#resResult(trace.obj, val[1], 0)
 
@@ -79,63 +84,40 @@ def eval_binop(binop):
 	right = trace_interpret.eval_tracing(binop.right)
 	
 	if binop.op.__class__ == _ast.Add:
-		app = mkAppn(trace_interpret.parents[-1],
-		             0,
-		             primitive_add(),
-			     2,
-		             left[1],
-		             right[1])
-		def ev():
-			Recorder.enterComputation(app)
-			leftr = left[0]()[0]   # leftr and rightr:
-			rightr = right[0]()[0] # the result values
-			res = (leftr + rightr, Recorder.makeValue(app, leftr + rightr))
-			Recorder.finishComputation(app, res[1])
-			return res
+		trace_op = primitive_add()
+		comb_func = lambda x,y: x + y
 	elif binop.op.__class__ == _ast.Sub:
-		app = mkAppn(trace_interpret.parents[-1],
-		             0,
-		             primitive_sub(),
-			     2,
-		             left[1],
-		             right[1])
-		def ev():
-			Recorder.enterComputation(app)
-			leftr = left[0]()[0]
-			rightr = right[0]()[0]
-			res = (leftr - rightr, Recorder.makeValue(app, leftr - rightr))
-			Recorder.finishComputation(app, res[1])
-			return res
+		trace_op = primitive_sub()
+		comb_func = lambda x,y: x - y
 	elif binop.op.__class__ == _ast.Mult:
-		app = mkAppn(trace_interpret.parents[-1],
-		             0,
-			     primitive_mul(),
-			     2,
-		             left[1],
-		             right[1])
-		def ev():
-			Recorder.enterComputation(app)
-			leftr = left[0]()[0]
-			rightr = right[0]()[0]
-			res = (leftr * rightr, Recorder.makeValue(app, leftr * rightr))
-			Recorder.finishComputation(app, res[1])
-			return res
+		trace_op = primitive_mul()
+		comb_func = lambda x,y: x * y
 	elif binop.op.__class__ == _ast.Div:
-		app = mkAppn(trace_interpret.parents[-1],
-		             0,
-		             primitive_div(),
-			     2,
-		             left[1],
-		             right[1])
-		def ev():
-			Recorder.enterComputation(app)
-			leftr = left[0]()[0]
-			rightr = right[0]()[0]
-			res = (leftr // rightr, Recorder.makeValue(app, leftr // rightr))
-			Recorder.finishComputation(app, res[1])
-			return res
+		trace_op = primitive_div()
+		comb_func = lambda x,y: x // y
 	else:
 		raise Exception, "Unrecognized BinOp!"
+	
+	app = trace_utils.mkAppn(trace_interpret.parents[-1],
+	      			 0,
+	      			 trace_op,
+	      			 2,
+	      			 left[1],
+	      			 right[1])
+	
+	def ev():
+		trace_interpret.parents.append(app)
+		Recorder.enterComputation(app)		
+		
+		leftr = left[0]()[0]   # leftr and rightr:
+		rightr = right[0]()[0] # the result values
+		resval = comb_func(leftr, rightr)
+		res = (resval, Recorder.makeValue(app, resval))
+		
+		Recorder.finishComputation(app, res[1])
+		trace_interpret.parents.pop()
+		
+		return res
 	
 	return (ev, app)
 
@@ -161,12 +143,14 @@ def eval_boolop(boolop):
 	             len(boolop.values),
 	             *tuple(map(lambda (x): x[1], subs)))
 	def ev():
+		trace_interpret.parents.append(app)
 		Recorder.enterComputation(app)
 		for this in subs:
 			val = this[0]()
 			if interrupt_test(val[0]):
 				break
 		Recorder.finishComputation(app, this[1])
+		trace_interpret.parents.pop()
 		return val
 		
 	return (ev, app)
@@ -430,8 +414,7 @@ def exec_return(ret):
 def eval_str(ast):
 	assert ast.__class__ == _ast.Str
 	
-	string = mkAbstract("\"%s\"" % ast.s)
-	trace = mkValueUse(trace_interpret.parents[-1], 0, string)
+	trace = Recorder.makeValue(trace_interpret.parents[-1], ast.s)
 	def ev():
 		return (ast.s, trace)
 	return (ev, trace)
