@@ -35,7 +35,7 @@ class Computation(object):
 		self._parent = parent
 		parent._children.append(self)
 		self.func = func
-		self.args = args
+		self.args = args # args is a list
 		self._children = []
 		self.entered = False
 		self._result = None
@@ -57,7 +57,7 @@ class Computation(object):
 	
 	def children(self):
 		print "A compututation's children are:", self._children
-		return self._children
+		return self._children + self.args # XXX: AAH! Args bad here!
 	
 	def result(self):
 		return self._result

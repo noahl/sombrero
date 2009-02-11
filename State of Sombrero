@@ -1,0 +1,33 @@
+State of Sombrero
+-----------------
+
+There are the issues that should be taken care of.
+
+Short-term
+----------
+
+- Trace the rest of Python. This is not too bad - just go through the types of
+  AST node and add code for each one.
+- Get the multiple-file-handling code working again. It broke during the
+  transition to the Recorder interface. Fix it.
+
+Medium-term
+-----------
+
+- Refactor the tracer so AST nodes are objects that know how to trace
+  themselves. Then maybe simplify the eval_tracing and exec_stmt functions in
+  trace_interpret.py to wrap them and adjust the parent stack?
+- Reconsider how variable references are represented. Maybe make a new type of
+  node in memory_recorder.py that shows the name of the variable that was
+  referenced in the display, so it's easier to understand.
+
+Long-term
+---------
+
+- The interface currently assumes that the trace is a tree. Redo it so it can
+  handle more general graphs, then use this ability to make the trace cooler.
+  (Note: integrate this with the special tracing of variable references to make
+  the trace a general DAG.)
+- Give the user the choice of what intermediate values to record. This would
+  require the user interface to include either the AST or the program in a form
+  that could be connected to the AST.

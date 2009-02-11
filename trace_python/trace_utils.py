@@ -123,6 +123,7 @@ def access_primitive(name, parent):
 
 # access: access a variable by name. abstracts over the difference between
 # constdef/constuses and variables/valueuses.
+# NOTE: should this just be in eval_name in trace_funcs.py?
 # name is a string, parent is a trace node
 # returns a pair of (value, trace of use)
 def access(name, parent):
@@ -147,7 +148,7 @@ def lazy_writer(name, arity):
 	return lazy_lambda(lambda: Recorder.makeFunction(Recorder.top_level, name, [str(i) for i in range(1, arity)]))
 
 def mkAppn(parent, use, func, num, *args):
-	return Recorder.makeComputation(parent, func, args)
+	return Recorder.makeComputation(parent, func, list(args))
 
 # ast_indented_str: hackish and still loops, but gives pretty good output.
 # returns a string that contains the internal newlines and spacing to give nice
