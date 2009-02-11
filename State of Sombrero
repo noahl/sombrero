@@ -27,7 +27,8 @@ Long-term
 - The interface currently assumes that the trace is a tree. Redo it so it can
   handle more general graphs, then use this ability to make the trace cooler.
   (Note: integrate this with the special tracing of variable references to make
-  the trace a general DAG.)
+  the trace a general DAG.) (Also: search Google for "graph drawing contest" to
+  get algorithms.)
 - Give the user the choice of what intermediate values to record. This would
   require the user interface to include either the AST or the program in a form
   that could be connected to the AST.
