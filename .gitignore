@@ -6,6 +6,9 @@
 *.[oa]
 *~
 
+# exclude emacs backup files
+\#*\#
+
 # exclude the build directory
 build/
 
