@@ -177,13 +177,13 @@ def trace_file(filename):
 	
 	parents.append(Recorder.top_level)
 
+	res = None
+	
 	print "Program Terminal:\n"
 	try:
 		# run the program in mod with parent definition_main
 		exec_stmts(mod.body[:-1])
-		print "Module body ends with:", mod.body[-1]
 		if mod.body[-1].__class__ == _ast.Expr:
-			print "module ends with expr!"
 			res = eval_tracing(mod.body[-1].value)
 			res = res[0]()
 		else:
@@ -194,6 +194,7 @@ def trace_file(filename):
 		if len(parents) != 0:
 			print "Non-fatal error: parents left after module finished!"
 	except ex:
+		print "Top-level exception!"
 		res = (ex,
 		       Recorder.makeError(Recorder.top_level, ex))
 	finally:

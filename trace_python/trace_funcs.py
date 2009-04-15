@@ -285,11 +285,10 @@ def eval_compare(compare):
 	lt = trace_interpret.eval_tracing(compare.left)
 	rt = trace_interpret.eval_tracing(compare.comparators[0])
 	oper = cmpoptable[compare.ops[0].__class__]
-	ap = mkApp2(trace_interpret.parents[-1],
-	             0,
-	             mkValueUse(trace_interpret.parents[-1], 0, oper[0]()),
-	             lt[1],
-	             rt[1])
+	ap = Recorder.makeComputation(trace_interpret.parents[-1],
+				      oper[0],
+				      lt[1],
+				      rt[1])
 	
 	def ev():
 		left = lt  # next four lines are because Python doesn't
@@ -297,14 +296,18 @@ def eval_compare(compare):
 		app = ap
 		op = oper
 		
+		trace_interpret.parents.append(app)
+		Recorder.enterComputation(app)
+
+		# should be a 'try' here
 		leftr = left[0]()[0]
 		rightr = right[0]()[0]
-		entResult(app, 0)
-		pyres = op[1](leftr, rightr) # Python result - doesn't have a trace
+		pyres = op[1](leftr, rightr) # Python result - no trace
 		
 		if not pyres:
-			tres = mkValueUse(app, 0, primitive_false())
-			resResult(app, tres, 0)
+			tres = Recorder.makeValue(trace_interpret.parents[-1],
+						  False)
+			Recorder.finishComputation(app, tres)
 			return (False, tres)
 		
 		left = right
@@ -315,25 +318,28 @@ def eval_compare(compare):
 		for (op, val) in zip(compare.ops[1:], compare.comparators[1:]):
 			opt = cmpoptable[op.__class__]
 			right = trace_interpret.eval_tracing(val)
-			napp = mkApp2(trace_interpret.parents[-1],
-			              0,
-			              mkValueUse(trace_interpret.parents[-1], 0, opt[0]()),
-			              left[1],
-			              right[1])
-			resResult(app, napp, 0)
-			entResult(napp, 0)
+			napp = Recorder.makeComputation( # napp = "new app"
+				trace_interpret.parents[-1],
+				opt[0],
+				left[1],
+				right[1])
+			Recorder.finishComputation(app, napp)
+			Recorder.enterComputation(napp)
 			leftr = left[0]()[0]
 			rightr = right[0]()[0]
 			pyres = opt[1](leftr, rightr)
 			if not pyres:
-				tres = mkValueUse(napp, 0, primitive_false())
-				resResult(napp, tres, 0)
+				tres = Recorder.makeValue(
+					trace_interpret.parents[-1],
+					False)
+				Recorder.finishComputation(napp, tres)
 				return (False, tres)
 			left = right
 			app = napp
 		
-		tres = mkValueUse(app, 0, primitive_true())
-		resResult(app, tres, 0)
+		tres = Recorder.makeValue(trace_interpret.parents[-1],
+					  True)
+		Recorder.finishComputation(app, tres)
 		return (True, tres)
 	
 	return (ev, ap)
@@ -373,31 +379,43 @@ def exec_functiondef(fdef):
 		raise Exception, "Unhandled case in exec_functiondef!"
 
 primitive_none = trace_utils.lazy_writer("None", 0)
+primitive_if = trace_utils.lazy_writer("If", 3)
 def exec_if(exp):
 	assert exp.__class__ == _ast.If
+
+	# Make trace
 	
 	cond = trace_interpret.eval_tracing(exp.test)
-	
-	trace = mkIf(trace_interpret.parents[-1], 0, cond[1])
+	cons = trace_interpret.eval_tracing(exp.body)
+	alt  = trace_interpret.eval_tracing(exp.orelse)
+	trace = Recorder.makeComputation(trace_interpret.parents[-1],
+					 primitive_if(),
+					 cond[1],
+					 cons[1],
+					 alt[1])
+
+	# Enter trace
 	
 	trace_interpret.parents.append(trace)
-	
-	entResult(trace, 0)
-	
-	condr = cond[0]()
-	
-	if condr[0]:
-		res = exec_stmts(exp.body)
-	else:
-		res = exec_stmts(exp.orelse)
+	Recorder.enterComputation(trace)
 
-	resResult(trace,
-		  mkValueUse(trace_interpret.parents[-1],
-			     0,
-			     primitive_none()),
-		  0)
-	
-	trace_interpret.parents.pop()
+	# Evaluate
+	try:
+		condr = cond[0]()
+		
+		if condr[0]:
+			res = exec_stmts(exp.body)
+		else:
+			res = exec_stmts(exp.orelse)
+	except ex:
+		res = (ex,
+		       Recorder.makeError(trace_interpret.parents[-1],
+					  ex))
+
+	finally:
+		# Leave trace
+		trace_interpret.parents.pop()
+		Recorder.finishComputation(trace, res[1])	
 	
 	return res
 
@@ -464,7 +482,7 @@ def eval_str(ast):
 
 primitive_not = trace_utils.lazy_writer("not", 1)
 primitive_true = trace_utils.lazy_writer("True", 0)   # looks like there's no mkBool, so...
-primitive_false = trace_utils.lazy_writer("False", 0)
+primitive_false = trace_utils.lazy_lambda(lambda: Recorder.makeValue(Recorder.toplevel, False))
 # Note: True and False would probably be valueapps of constructors (or
 # something) in "pure" Haskell. However, if this works, it's fine. And it might
 # be a more accurate translation of Python anyway.
