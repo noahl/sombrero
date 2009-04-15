@@ -34,23 +34,25 @@ class lazy_lambda(object):
 class ConstDef(object):
 	def __init__(self, context, var):
 		self.obj = Recorder.makeValue(context, var)
-	def makeAccess(self, parent, use):
-		#return mkConstUse(parent, use, self.obj)
+	def makeAccess(self, parent):
 		return self.obj
 
 class Variable(object):
 	def __init__(self, module, begin, end, fixity, arity, name, local):
 		self.obj = Recorder.makeFunction(self, name, [str(i) for i in range(1, arity)])
-	def makeAccess(self, parent, use):
-		#return mkValueUse(parent, use, self.obj)
+	def makeAccess(self, parent):
 		return self.obj
 
 # This class is a general variable that needs no work to be accessed.
 class Accessible(object):
 	def __init__(self, parent, obj):
+		self.source = parent
 		self.obj = obj
-	def makeAccess(self, parent, use):
-		return self.obj
+	def makeAccess(self, parent, name, val):
+		return Recorder.makeReference(parent,
+					      self.source,
+					      name,
+					      val)
 
 # Param is also a trace object that can be put in an environment. It deals with
 # things that are already evaluated and dont' actually need a trace to be
@@ -118,27 +120,19 @@ def lookup_primitive(name):
 def access_primitive(name, parent):
 	(val, atom) = lookup_primitive(name)
 	
-	#return (val, mkValueUse(parent, 0, atom))
 	return (val, atom)
 
-# access: access a variable by name. abstracts over the difference between
-# constdef/constuses and variables/valueuses.
-# NOTE: should this just be in eval_name in trace_funcs.py?
+# access: access a variable by name.
+# QUESTION: should this just be in eval_name in trace_funcs.py?
 # name is a string, parent is a trace node
-# returns a pair of (value, trace of use)
+# returns a pair of (value, trace of access)
 def access(name, parent):
-	#print "Access called"
 	try:
-		#print "access called on", (name, parent)
 		(val, traceobj) = lookup(name)
-		#print "access got", (val, traceobj), "from lookup"
 	except NameError:
-		#print "Access falling back to access_primitive"
 		return access_primitive(name, parent)
 	
-	#print "access past try block"
-	use = traceobj.makeAccess(parent, 0)
-	#print "access returning", (val, use)
+	use = traceobj.makeAccess(parent, name, val)
 	return (val, use)
 
 # lazy_writer: used to generate the traces of primitive functions. will write a

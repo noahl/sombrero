@@ -64,61 +64,94 @@ def exec_stmts(asts):
 	return None # Do *NOT* return a RetVal here, because that could stop an
 	            # enclosing exec_stmts before it finishes.
 
+exectable = {
+	_ast.Expr: exec_expr,
+	_ast.Assign: exec_assign,
+	_ast.FunctionDef: exec_functiondef,
+	_ast.If: exec_if,
+	_ast.Print: exec_print,
+	_ast.Return: exec_return
+}
+
 def exec_stmt(ast):
 	assert isinstance(ast, _ast.stmt)
 
-	if ast.__class__ == _ast.Expr:          # can't return
-		res = eval_tracing(ast.value)
-		res[0]()
-	elif ast.__class__ == _ast.Assign:      # can't return
-		exec_assign(ast)
-	elif ast.__class__ == _ast.FunctionDef: # can't return
-		exec_functiondef(ast)
-	elif ast.__class__ == _ast.If: # the stmt, not the expr
-		res = exec_if(ast)
+	try:
+		executor = exectable[ast.__class__]
+
+		res = executor(ast)
+		
 		if res.__class__ == RetVal: # might return, but not necessarily
 			return res
-	elif ast.__class__ == _ast.Print:
-		eval_print(ast)
-	elif ast.__class__ == _ast.Return:
-		return exec_return(ast)   # this one will definitely return :-)
-	else:
-		raise Exception, ("Unrecognized AST node %s!" % (ast.__class__.__name__,))
+	except ex:
+		raise Exception("Unrecognized AST node %s!" % (ast.__class__.__name__,))
 	
 	return None
 
+evaltable = {
+	_ast.BinOp:   eval_binop,
+	_ast.BoolOp:  eval_boolop,
+	_ast.Call:    eval_call,
+	_ast.Compare: eval_compare,
+	_ast.Name:    eval_name,
+	_ast.Num:     eval_num,
+	_ast.Str:     eval_str,
+	_ast.UnaryOp: eval_unaryop
+}
+
 def eval_tracing(ast):
 	assert isinstance(ast, _ast.expr)
-	
-	if ast.__class__ == _ast.BinOp:
-		res = eval_binop(ast)
-	elif ast.__class__ == _ast.BoolOp:
-		res = eval_boolop(ast)
-	elif ast.__class__ == _ast.Call:
-		res = eval_call(ast)
-	elif ast.__class__ == _ast.Compare:
-		res = eval_compare(ast)
-	elif ast.__class__ == _ast.Name:
-		res = eval_name(ast)
-	elif ast.__class__ == _ast.Num:
-		res = eval_num(ast)
-	elif ast.__class__ == _ast.Str:
-		res = eval_str(ast)
-	elif ast.__class__ == _ast.UnaryOp:
-		res = eval_unaryop(ast)
+
+	try:
+		evaluator = evaltable[ast.__class__]
+	except ex:
+		res = (ex,
+		       Recorder.makeError(parents[-1], ex))
+		return res
+
+	# you caught us in the middle of changing interfaces!
+	# this is so embarrassing. please look back later. *blush*
+	if callable(evaluator):
+		res = evaluator(ast)
+		
+		def wrapper():
+			try:
+				result = res[0]()
+			except Exception, ex:
+				# the next line is wrong because it
+				# gives the wrong parent. (unless you
+				# count on the trace function *not*
+				# catching errors, which makes me
+				# nervous.
+				result = (ex,
+					  Recorder.makeError(
+						parents[-1], str(ex)))
+			return result
 	else:
-		raise Exception, ("Unrecognized AST node %s!" % (ast.__class__.__name__,))
+		# 'evaluator' is a class.
+		
+		# Make the trace
+		subs = evaluator.subexpressions()
+		subs = [eval_tracing(s) for s in subs]
+		trace =  evaluator.makeTrace([s[1] for s in subs])
+		
+		def wrapper():
+			# Enter the trace
+			parents.append(trace)
+			Recorder.enterComputation(trace)
+			try:
+				# Evaluate the expression
+				result = evaluator.eval(subs)
+			except ex:
+				result = (ex,
+				       Recorder.makeError(trace, ex))
+                        finally:
+				Recorder.finishComputation(trace, result[1])
+				parents.pop()
 	
-	def wrapper():
-		try:
-			result = res[0]()
-		except Exception, ex:
-			# the next line is wrong because it gives the wrong
-			# parent. (unless you count on the trace function *not*
-			# catching errors, which makes me nervous.
-			result = (ex, Recorder.makeError(parents[-1], str(ex)))
-		#print ast_indented_str(ast, 0), "\nEvaluates To:\n", result[0]
-		return result
+			return (res, trace)
+		res = (wrapper, trace)
+	
 	
 	return (wrapper, res[1])
 
@@ -150,20 +183,22 @@ def trace_file(filename):
 		exec_stmts(mod.body[:-1])
 		print "Module body ends with:", mod.body[-1]
 		if mod.body[-1].__class__ == _ast.Expr:
+			print "module ends with expr!"
 			res = eval_tracing(mod.body[-1].value)
-			res = res[0]() # experiment!
-			#resResult(definition_main, res[1], 0)
+			res = res[0]()
 		else:
 			exec_stmt(mod.body[-1])
-			#res = mkValueUse(definition_main, 0, primitive_io())
 			res = primitive_io()
-			#resResult(definition_main, res, 0)
 		print "Overall result:" + str(res)
+
+		if len(parents) != 0:
+			print "Non-fatal error: parents left after module finished!"
+	except ex:
+		res = (ex,
+		       Recorder.makeError(Recorder.top_level, ex))
+	finally:
 		Recorder.set_top_level_program(res[1])
 		parents.pop()
-		# assert len(parents) == 0 uh-oh.
-	finally:
-		#hat_Close()
 		pass
 	
 	print "End program terminal"

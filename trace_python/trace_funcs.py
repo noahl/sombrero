@@ -115,6 +115,7 @@ def eval_binop(binop):
 			resval = comb_func(leftr, rightr)
 			res = (resval, Recorder.makeValue(app, resval))
 		except ex:
+			print "error in binop!"
 			res = (ex,
 			       Recorder.makeError(ex,
 						  trace_interpret.parents[-1]))
@@ -337,6 +338,15 @@ def eval_compare(compare):
 	
 	return (ev, ap)
 
+# this is just a small wrapper
+def exec_expr(expr):
+	assert expr.__class__ == _ast.Expr
+
+	res = eval_tracing(expr.value)
+	res[0]()
+
+	return None
+
 def exec_functiondef(fdef):
 	assert fdef.__class__ == _ast.FunctionDef	
 
@@ -414,7 +424,7 @@ def eval_num(num):
 primitive_print = trace_utils.lazy_writer("print", -1)
 primitive_stdout = trace_utils.lazy_writer("stdout", 0)
 primitive_io = trace_utils.lazy_lambda(lambda: mkAbstract("IO"))
-def eval_print(pr):
+def exec_print(pr):
 	assert pr.__class__ == _ast.Print
 	assert 0 <= len(pr.values) <= 5
 	
@@ -455,7 +465,7 @@ def eval_str(ast):
 primitive_not = trace_utils.lazy_writer("not", 1)
 primitive_true = trace_utils.lazy_writer("True", 0)   # looks like there's no mkBool, so...
 primitive_false = trace_utils.lazy_writer("False", 0)
-# note: True and False would probably be valueapps of constructors (or
+# Note: True and False would probably be valueapps of constructors (or
 # something) in "pure" Haskell. However, if this works, it's fine. And it might
 # be a more accurate translation of Python anyway.
 def eval_unaryop(unaryop):

@@ -106,6 +106,9 @@ class ProgramBox(object):
 	def show_children(self):
 		for c in self.program.children():
 			self.gui.add_child(ProgramBox(c, self.viewstate))
+		if self.program.__class__ == Recorder.Reference:
+			self.gui.add_child(ProgramBox(self.program.source(),
+						      self.viewstate))
 	
 	def show_result(self):
 		r = self.program.result()
