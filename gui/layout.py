@@ -288,9 +288,11 @@ class Layout(object):
 	# algorithm documented at the top of the page. this adjusts the part of
 	# the tree above us, and then calls our own adjust() method.
 	def adjustAll(self):
-		self.anchor.adjustAll()
 		self.layout = None # invalidate our cached layout.
 		self.adjust()
+		self.anchor.adjustAll()
+		# NOTE: check some weird dependencies in the order you call
+		# this function. self.adjust(), and self.deps_bbox().
 	
 	# decorateLayout: override this method in a subclass to do draw extra
 	# stuff after the nodes are layed out, like drawing arrows.
@@ -409,3 +411,21 @@ class TreeLayout(Layout):
 			layout.append((x, y))
 			x += n.deps_width()
 			x += 10
+		
+		return layout
+
+	def decorateLayout(self):
+		if hasattr(self, "lines"):
+			for l in self.lines:
+				self.canvas.delete(l)
+		self.lines = []
+		(ax1, ay1, ax2, ay2) = self.anchor.bbox()
+
+		for i in range(0, len(self.nodes)):
+			(bx1, by1, bx2, by2) = self.nodes[i].bbox()
+
+			self.lines.append(
+			  self.canvas.create_line(
+			    (ax1+ax2)/2, ay2, (bx1+bx2/2), by1,
+			    fill="black", width=2))
+

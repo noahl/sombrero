@@ -323,7 +323,7 @@ class ProgramText(Text):
 	
 	def add_child(self, backend):
 		if self.childLayout is None:
-			self.childLayout = layout.ColumnLayout(self.node, self.canvas)
+			self.childLayout = layout.TreeLayout(self.node, self.canvas)
 			self.childLayout.do_init()
 		
 		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
