@@ -13,7 +13,7 @@ class Value(object):
 		return self._parent
 	
 	def children(self):
-		return []
+		return [self._parent] # makes it work, but pretty odd.
 	
 	def result(self):
 		return None

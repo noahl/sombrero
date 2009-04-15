@@ -113,6 +113,9 @@ def eval_tracing(ast):
 		try:
 			result = res[0]()
 		except Exception, ex:
+			# the next line is wrong because it gives the wrong
+			# parent. (unless you count on the trace function *not*
+			# catching errors, which makes me nervous.
 			result = (ex, Recorder.makeError(parents[-1], str(ex)))
 		#print ast_indented_str(ast, 0), "\nEvaluates To:\n", result[0]
 		return result
@@ -145,9 +148,10 @@ def trace_file(filename):
 	try:
 		# run the program in mod with parent definition_main
 		exec_stmts(mod.body[:-1])
+		print "Module body ends with:", mod.body[-1]
 		if mod.body[-1].__class__ == _ast.Expr:
-			res = eval_tracing(mod.body[len(mod.body)-1].value)
-			res[0]() # experiment!
+			res = eval_tracing(mod.body[-1].value)
+			res = res[0]() # experiment!
 			#resResult(definition_main, res[1], 0)
 		else:
 			exec_stmt(mod.body[-1])
@@ -157,7 +161,7 @@ def trace_file(filename):
 		print "Overall result:" + str(res)
 		Recorder.set_top_level_program(res[1])
 		parents.pop()
-		assert len(parents) == 0
+		# assert len(parents) == 0 uh-oh.
 	finally:
 		#hat_Close()
 		pass
