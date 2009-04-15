@@ -23,6 +23,16 @@ import sys
 import trace_utils
 import trace_interpret
 
+# Outline of a trace function:
+# 1. Make trace with a Recorder.* function
+# 2. Enter trace with parents.append and Recorder.enterComputation
+# 3. Try:
+#     eval_* subexpressions
+#     combine them into your result
+# 4. Finally:
+#     make result trace object with Recorder.finishComputation
+#     pop your trace off the parent stack
+
 primitive_assign = trace_utils.lazy_writer("=", 2)
 primitive_none = trace_utils.lazy_lambda(lambda: Recorder.makeValue(Recorder.top_level, None))
 def exec_assign(asn):
@@ -32,47 +42,30 @@ def exec_assign(asn):
 	name = asn.targets[0]
 	assert name.__class__ == _ast.Name
 	
-	# First, we evaluate the assign's value
+	# Make trace
 
-	trace = Recorder.makeComputation(trace_interpret.parents[-1], primitive_assign(), [])
+	trace = Recorder.makeComputation(trace_interpret.parents[-1],
+					 primitive_assign(),
+					 [])
+
+	# Enter trace
 	
 	trace_interpret.parents.append(trace)
 	Recorder.enterComputation(trace)
-
-	val = trace_interpret.eval_tracing(asn.value)
-	valr = val[0]()
-
-	Recorder.finishComputation(trace, primitive_none())
-	trace_interpret.parents.pop()
-
-	# ConstDef here basically puts the program into static single
-	# assignment form. every assignment to a variable makes a new version,
-	# and the symbol table always has the most recent one.
-
-	#trace = Accessible(trace_interpret.parents[-1],
-	#		   Recorder.makeComputation(trace_interpret.parents[-1]))
-		# make a new variable each time because the definition site
-		# changes for each assignment to it.
-
-	#trace_interpret.parents.append(trace.obj)
-
-	#entResult(trace.obj, 0)
-
-#	for (name, cdef) in zip(asn.targets, traces):
-#		entResult(cdef, 0)
-#		assign(name.id, (valr[0], cdef))
-#		resResult(cdef, val[1], 0) # val, not valr
-	trace_utils.assign(name.id, (valr[0], trace_utils.Accessible(trace_interpret.parents[-1],
-								  trace)))
-
-	#resResult(trace.obj, val[1], 0)
-
-	#trace_interpret.parents.pop()
+	
+	try:
+		val = trace_interpret.eval_tracing(asn.value)
+		valr = val[0]()
+		
+		trace_utils.assign(name.id,
+				   (valr[0],
+				    trace_utils.Accessible(trace_interpret.parents[-1], trace)))
+	finally:
+		Recorder.finishComputation(trace, primitive_none())
+		trace_interpret.parents.pop()
 	
 	return None
 
-# binops are printed infix even if they're not marked that way because of lines
-# 469-472 in <hat-src>/hattools/SExp.hs
 primitive_add = trace_utils.lazy_writer("+", 2)
 primitive_sub = trace_utils.lazy_writer("-", 2)
 primitive_mul = trace_utils.lazy_writer("*", 2)
@@ -80,9 +73,10 @@ primitive_div = trace_utils.lazy_writer("//", 2) # only integers right now
 def eval_binop(binop):
 	assert binop.__class__ == _ast.BinOp
 	
-	left = trace_interpret.eval_tracing(binop.left)
-	right = trace_interpret.eval_tracing(binop.right)
-	
+	# check which binop we're using.
+	# eventually we should just convert the raw AST to a better form and
+	#   stop this. (but that'll happen when the trace funcs become objects)
+
 	if binop.op.__class__ == _ast.Add:
 		trace_op = primitive_add()
 		comb_func = lambda x,y: x + y
@@ -98,6 +92,11 @@ def eval_binop(binop):
 	else:
 		raise Exception, "Unrecognized BinOp!"
 	
+	# Make the trace
+	
+	left = trace_interpret.eval_tracing(binop.left)
+	right = trace_interpret.eval_tracing(binop.right)
+	
 	app = trace_utils.mkAppn(trace_interpret.parents[-1],
 	      			 0,
 	      			 trace_op,
@@ -106,16 +105,23 @@ def eval_binop(binop):
 	      			 right[1])
 	
 	def ev():
+		# Enter the trace
 		trace_interpret.parents.append(app)
 		Recorder.enterComputation(app)		
-		
-		leftr = left[0]()[0]   # leftr and rightr:
-		rightr = right[0]()[0] # the result values
-		resval = comb_func(leftr, rightr)
-		res = (resval, Recorder.makeValue(app, resval))
-		
-		Recorder.finishComputation(app, res[1])
-		trace_interpret.parents.pop()
+
+		try:
+			leftr = left[0]()[0]   # leftr and rightr:
+			rightr = right[0]()[0] # the result values
+			resval = comb_func(leftr, rightr)
+			res = (resval, Recorder.makeValue(app, resval))
+		except ex:
+			print "error in binop!"
+			res = (ex,
+			       Recorder.makeError(ex,
+						  trace_interpret.parents[-1]))
+                finally:		
+			Recorder.finishComputation(app, res[1])
+			trace_interpret.parents.pop()
 		
 		return res
 	
@@ -125,7 +131,10 @@ primitive_and = trace_utils.lazy_writer("and", -1) # arity what?
 primitive_or = trace_utils.lazy_writer("or", -1)
 def eval_boolop(boolop):
 	assert boolop.__class__ == _ast.BoolOp
-	assert 2 <= len(boolop.values) <= 15 # might not even need the upper limit
+	assert 2 <= len(boolop.values)
+
+	# Check which boolop it is.
+	# This will eventually change the same way the binops will.
 	
 	if boolop.op.__class__ == _ast.And:
 		trace_op  = primitive_and()
@@ -135,6 +144,8 @@ def eval_boolop(boolop):
 		interrupt_test = lambda (x): x
 	else:
 		raise Exception, "Unknown boolop!"
+
+	# Make the trace
 	
 	subs = map(lambda (x): trace_interpret.eval_tracing(x), boolop.values)
 	app = trace_utils.mkAppn(trace_interpret.parents[-1],
@@ -142,24 +153,35 @@ def eval_boolop(boolop):
 	             trace_op,
 	             len(boolop.values),
 	             *tuple(map(lambda (x): x[1], subs)))
+	
 	def ev():
+		# Enter the trace
 		trace_interpret.parents.append(app)
 		Recorder.enterComputation(app)
-		for this in subs:
-			val = this[0]()
-			if interrupt_test(val[0]):
-				break
-		Recorder.finishComputation(app, this[1])
-		trace_interpret.parents.pop()
-		return val
 		
+		try:
+			for this in subs:
+				val = this[0]()
+				if interrupt_test(val[0]):
+					break
+		except ex:
+			this = (ex,
+				Recorder.makeError(trace_interpret.parents[-1],
+						   ex))
+                finally:
+			Recorder.finishComputation(app, this[1])
+			trace_interpret.parents.pop()
+		return val
+	
 	return (ev, app)
 
 def trace_value(val, parent):
 	if isinstance(val, int):
 		return mkInt(parent, 0, val)
 	else:
-		raise Exception, ("Unhandled case in trace value: %s!" % (val,))
+		ex = Exception("Unhandled case in trace value: %s!" % val)
+		return (ex,
+			Recorder.makeError(parent, ex))
 
 def eval_call(call):
 	assert call.__class__ == _ast.Call
@@ -177,14 +199,20 @@ def eval_call(call):
 		if funcr.__class__ == trace_utils.traced_function:
 			#print "Evaluating a call to a traced function"
 			
-			app = mkAppn(trace_interpret.parents[-1], 0, func[1], len(args), *tuple([x[1] for x in args]))
+			app = mkAppn(trace_interpret.parents[-1],
+				     0,
+				     func[1],
+				     len(args),
+				     *tuple([x[1] for x in args]))
+			
 			# we already know that the function takes only
 			# positional args, because exec_functiondef checked
 			# that.
-			frames.append(dict(zip([x.id for x in funcr.args.args],
-			                       [(v, Param(r[1])) for (v, r) in zip(argsr, args)])))
+			frames.append(
+			  dict(zip([x.id for x in funcr.args.args],
+				   [(v, Param(r[1])) for (v, r) in zip(argsr, args)])))
 			trace_interpret.parents.append(app)
-			
+
 			#print "New call frame:", frames[-1]
 			
 			try: # this stuff should really be in an exec_block function
@@ -252,29 +280,34 @@ cmpoptable = {_ast.Eq    : (primitive_eq, lambda a,b: a == b),
               _ast.NotIn : (primitive_nin, lambda a,b: a not in b)}
 def eval_compare(compare):
 	assert compare.__class__ == _ast.Compare
-		
+
+	# Make trace
 	lt = trace_interpret.eval_tracing(compare.left)
 	rt = trace_interpret.eval_tracing(compare.comparators[0])
 	oper = cmpoptable[compare.ops[0].__class__]
-	ap = mkApp2(trace_interpret.parents[-1],
-	             0,
-	             mkValueUse(trace_interpret.parents[-1], 0, oper[0]()),
-	             lt[1],
-	             rt[1])
+	ap = Recorder.makeComputation(trace_interpret.parents[-1],
+				      oper[0],
+				      lt[1],
+				      rt[1])
 	
 	def ev():
 		left = lt  # next four lines are because Python doesn't
 		right = rt # actually do lexical scoping
 		app = ap
 		op = oper
+		
+		trace_interpret.parents.append(app)
+		Recorder.enterComputation(app)
+
+		# should be a 'try' here
 		leftr = left[0]()[0]
 		rightr = right[0]()[0]
-		entResult(app, 0)
-		pyres = op[1](leftr, rightr) # Python result - doesn't have a trace
+		pyres = op[1](leftr, rightr) # Python result - no trace
 		
 		if not pyres:
-			tres = mkValueUse(app, 0, primitive_false())
-			resResult(app, tres, 0)
+			tres = Recorder.makeValue(trace_interpret.parents[-1],
+						  False)
+			Recorder.finishComputation(app, tres)
 			return (False, tres)
 		
 		left = right
@@ -285,28 +318,40 @@ def eval_compare(compare):
 		for (op, val) in zip(compare.ops[1:], compare.comparators[1:]):
 			opt = cmpoptable[op.__class__]
 			right = trace_interpret.eval_tracing(val)
-			napp = mkApp2(trace_interpret.parents[-1],
-			              0,
-			              mkValueUse(trace_interpret.parents[-1], 0, opt[0]()),
-			              left[1],
-			              right[1])
-			resResult(app, napp, 0)
-			entResult(napp, 0)
+			napp = Recorder.makeComputation( # napp = "new app"
+				trace_interpret.parents[-1],
+				opt[0],
+				left[1],
+				right[1])
+			Recorder.finishComputation(app, napp)
+			Recorder.enterComputation(napp)
 			leftr = left[0]()[0]
 			rightr = right[0]()[0]
 			pyres = opt[1](leftr, rightr)
 			if not pyres:
-				tres = mkValueUse(napp, 0, primitive_false())
-				resResult(napp, tres, 0)
+				tres = Recorder.makeValue(
+					trace_interpret.parents[-1],
+					False)
+				Recorder.finishComputation(napp, tres)
 				return (False, tres)
 			left = right
 			app = napp
 		
-		tres = mkValueUse(app, 0, primitive_true())
-		resResult(app, tres, 0)
+		tres = Recorder.makeValue(trace_interpret.parents[-1],
+					  True)
+		Recorder.finishComputation(app, tres)
 		return (True, tres)
 	
 	return (ev, ap)
+
+# this is just a small wrapper
+def exec_expr(expr):
+	assert expr.__class__ == _ast.Expr
+
+	res = eval_tracing(expr.value)
+	res[0]()
+
+	return None
 
 def exec_functiondef(fdef):
 	assert fdef.__class__ == _ast.FunctionDef	
@@ -334,27 +379,43 @@ def exec_functiondef(fdef):
 		raise Exception, "Unhandled case in exec_functiondef!"
 
 primitive_none = trace_utils.lazy_writer("None", 0)
+primitive_if = trace_utils.lazy_writer("If", 3)
 def exec_if(exp):
 	assert exp.__class__ == _ast.If
+
+	# Make trace
 	
 	cond = trace_interpret.eval_tracing(exp.test)
-	
-	trace = mkIf(trace_interpret.parents[-1], 0, cond[1])
+	cons = trace_interpret.eval_tracing(exp.body)
+	alt  = trace_interpret.eval_tracing(exp.orelse)
+	trace = Recorder.makeComputation(trace_interpret.parents[-1],
+					 primitive_if(),
+					 cond[1],
+					 cons[1],
+					 alt[1])
+
+	# Enter trace
 	
 	trace_interpret.parents.append(trace)
-	
-	entResult(trace, 0)
-	
-	condr = cond[0]()
-	
-	if condr[0]:
-		res = exec_stmts(exp.body)
-	else:
-		res = exec_stmts(exp.orelse)
-	
-	resResult(trace, mkValueUse(trace_interpret.parents[-1], 0, primitive_none()), 0)
-	
-	trace_interpret.parents.pop()
+	Recorder.enterComputation(trace)
+
+	# Evaluate
+	try:
+		condr = cond[0]()
+		
+		if condr[0]:
+			res = exec_stmts(exp.body)
+		else:
+			res = exec_stmts(exp.orelse)
+	except ex:
+		res = (ex,
+		       Recorder.makeError(trace_interpret.parents[-1],
+					  ex))
+
+	finally:
+		# Leave trace
+		trace_interpret.parents.pop()
+		Recorder.finishComputation(trace, res[1])	
 	
 	return res
 
@@ -381,7 +442,7 @@ def eval_num(num):
 primitive_print = trace_utils.lazy_writer("print", -1)
 primitive_stdout = trace_utils.lazy_writer("stdout", 0)
 primitive_io = trace_utils.lazy_lambda(lambda: mkAbstract("IO"))
-def eval_print(pr):
+def exec_print(pr):
 	assert pr.__class__ == _ast.Print
 	assert 0 <= len(pr.values) <= 5
 	
@@ -421,8 +482,8 @@ def eval_str(ast):
 
 primitive_not = trace_utils.lazy_writer("not", 1)
 primitive_true = trace_utils.lazy_writer("True", 0)   # looks like there's no mkBool, so...
-primitive_false = trace_utils.lazy_writer("False", 0)
-# note: True and False would probably be valueapps of constructors (or
+primitive_false = trace_utils.lazy_lambda(lambda: Recorder.makeValue(Recorder.toplevel, False))
+# Note: True and False would probably be valueapps of constructors (or
 # something) in "pure" Haskell. However, if this works, it's fine. And it might
 # be a more accurate translation of Python anyway.
 def eval_unaryop(unaryop):

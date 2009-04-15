@@ -389,3 +389,23 @@ class RowLayout(Layout):
 			  self.canvas.create_line(ax2, (ay1+ay2)/2, bx1, (by1+by2)/2,
 			                          arrow=LAST, fill="black", width=2))
 
+
+class TreeLayout(Layout):
+	def makeRelativeLayout(self):
+		layout = []
+
+		# find our total width
+		width = 0
+		for n in self.nodes:
+			width += n.deps_width()
+		# 10: the official padding width of sombrero?
+		width += 10 * (len(self.nodes) - 1)
+		
+		# and divide the width among the nodes
+		x = -(width/2)
+		y = 50
+
+		for n in self.nodes:
+			layout.append((x, y))
+			x += n.deps_width()
+			x += 10

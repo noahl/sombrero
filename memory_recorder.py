@@ -13,7 +13,7 @@ class Value(object):
 		return self._parent
 	
 	def children(self):
-		return []
+		return [self._parent] # makes it work, but pretty odd
 	
 	def result(self):
 		return None
@@ -29,6 +29,33 @@ class Function(object):
 	
 	def name(self):
 		return self._name
+
+class Reference(object):
+	def __init__(self, parent, source, name, val):
+		self._parent = parent
+		parent._children.append(self)
+		self._source = source
+		self._name = name
+		self.val = val
+	
+	# Program interface:
+		
+	def name(self):
+		return self._name + " (" + str(self.val) + ")"
+	
+	def parent(self):
+		return self._parent
+
+	def children(self):
+		return []
+
+	def result(self):
+		return None
+
+	# And extra:
+
+	def source(self):
+		return self._source
 
 class Computation(object):
 	def __init__(self, parent, func, args):
@@ -105,6 +132,11 @@ def makeFunction(parent, name, argnames):
 	#	top_level.dp = f
 
 	return f
+
+def makeReference(parent, source, name, val):
+	r = Reference(parent, source, name, val)
+
+	return r
 
 def makeComputation(parent, func, args):
 	c = Computation(parent, func, args)
