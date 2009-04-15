@@ -426,6 +426,6 @@ class TreeLayout(Layout):
 
 			self.lines.append(
 			  self.canvas.create_line(
-			    (ax1+ax2)/2, ay2, (bx1+bx2/2), by1,
+			    (ax1+ax2)/2, ay2, (bx1+bx2)/2, by1,
 			    fill="black", width=2))
 
