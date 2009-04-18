@@ -64,6 +64,7 @@ class ProgramBox(object):
 		# the two main attributes are program and viewstate
 		self.program = program
 		self.viewstate = viewstate
+		self.visible_children = set()
 		
 	def setgui(self, gui):
 		self.gui = gui
@@ -78,7 +79,6 @@ class ProgramBox(object):
 	# name: temporary method to give the gui a representation string until
 	#       we can get a real interface going.
 	def name(self):
-		print "Getting name of program", self.program
 		return self.program.name()
 	
 	# program: returns self's program, but first makes sure it exists, and
@@ -105,18 +105,29 @@ class ProgramBox(object):
 	
 	def show_children(self):
 		for c in self.program.children():
-			self.gui.add_child(ProgramBox(c, self.viewstate))
-		if self.program.__class__ == Recorder.Reference:
+			if (c not in self.visible_children and
+			    c is not self.program.result()):
+				self.gui.add_child(ProgramBox(c,
+							      self.viewstate))
+				self.visible_children.add(c)
+		if (self.program.__class__ == Recorder.Reference and
+		    self.program.source() not in self.visible_children):
 			self.gui.add_child(ProgramBox(self.program.source(),
 						      self.viewstate))
+			self.visible_children.add(self.program.source())
 	
 	def show_result(self):
 		r = self.program.result()
 		
 		if r is not None:
 			self.gui.add_result(ProgramBox(r, self.viewstate))
+
+	def notify_remove_child(c):
+		self.visible_children.remove(c)
 	
 	def hide(self):
+		if hasattr(self, "parent"):
+			self.parent.notify_remove_child(self)
 		self.gui.delete()
 	
 	def __str__(self):

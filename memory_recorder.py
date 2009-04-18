@@ -83,7 +83,6 @@ class Computation(object):
 		return self._parent
 	
 	def children(self):
-		print "A compututation's children are:", self._children
 		return self._children + self.args # XXX: AAH! Args bad here!
 	
 	def result(self):

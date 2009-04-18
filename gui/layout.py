@@ -289,8 +289,8 @@ class Layout(object):
 	# the tree above us, and then calls our own adjust() method.
 	def adjustAll(self):
 		self.layout = None # invalidate our cached layout.
-		self.adjust()
 		self.anchor.adjustAll()
+		self.adjust()
 		# NOTE: check some weird dependencies in the order you call
 		# this function. self.adjust(), and self.deps_bbox().
 	
@@ -398,13 +398,14 @@ class TreeLayout(Layout):
 
 		# find our total width
 		width = 0
+
 		for n in self.nodes:
 			width += n.deps_width()
 		# 10: the official padding width of sombrero?
 		width += 10 * (len(self.nodes) - 1)
 		
 		# and divide the width among the nodes
-		x = -(width/2)
+		x = -(width/2) + (self.anchor.width()/2)
 		y = 50
 
 		for n in self.nodes:

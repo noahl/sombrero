@@ -168,7 +168,7 @@ class App(Frame):
 		
 		self.importbutton = Button(self.rightframe,
 		                           command = filebackend.import_file,
-		                           text = "Import A Hat Trace File")
+		                           text = "Import A Python File")
 		self.importbutton.grid(row = 0, column = 0, sticky=N+E+W) # sticky N?
 		
 		self.fileframe = Frame(self.rightframe)
@@ -323,13 +323,14 @@ class ProgramText(Text):
 	
 	def add_child(self, backend):
 		if self.childLayout is None:
-			self.childLayout = layout.TreeLayout(self.node, self.canvas)
+			self.childLayout = layout.TreeLayout(self.node,
+							     self.canvas)
 			self.childLayout.do_init()
 		
 		n = layout.Node(ProgramText(backend, self.canvas), self.canvas)
 		self.childLayout.addNode(n)
 		n.do_init()
-		#self.childLayout.adjust()
+		self.childLayout.adjustAll()
 	
 	def add_result(self, backend):
 		#print "adding result", backend
